@@ -148,59 +148,53 @@ def verify_payment(request):
         })
 
 # ---------- DOCUMENT FLOW ----------
-@login_required(login_url='login')  # redirect anonymous users to login page
+@login_required(login_url='login')
 def upload_document(request):
-    # Ensure subscription exists for the user
     subscription, _ = Subscription.objects.get_or_create(user=request.user)
 
-    # 🚫 If subscription is invalid → redirect to payment page
-    if not subscription.is_valid():
+    # Redirect to payment if subscription invalid and free trial already used
+    if not subscription.is_valid() and subscription.free_trial_used:
         return redirect("initiate_payment")
 
     days_left = (subscription.expires_at - timezone.now()).days if subscription.expires_at else 0
     scans_left = subscription.scans_remaining
 
-    if request.method == "POST":
-        form = DocumentForm(request.POST, request.FILES)
-        if form.is_valid():
-            # Try to deduct a scan
-            if not subscription.deduct_scan():
-                return redirect("initiate_payment")  # no scans left
+    form = DocumentForm(request.POST or None, request.FILES or None)
+    error = None
 
-            uploaded_file = request.FILES['file']
-            with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(uploaded_file.name)[1]) as tmp_file:
-                for chunk in uploaded_file.chunks():
-                    tmp_file.write(chunk)
-                temp_path = tmp_file.name
+    if request.method == "POST" and form.is_valid():
+        if not subscription.deduct_scan():
+            return redirect("initiate_payment")
 
-            extracted_text = extract_text_from_file(temp_path)
-            os.remove(temp_path)
+        uploaded_file = request.FILES['file']
+        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(uploaded_file.name)[1]) as tmp_file:
+            for chunk in uploaded_file.chunks():
+                tmp_file.write(chunk)
+            temp_path = tmp_file.name
 
-            if not extracted_text.strip():
-                return render(request, "home/upload.html", {
-                    "form": form,
-                    "error": "Could not extract text from the uploaded file.",
-                    "days_left": days_left,
-                    "scans_left": scans_left,
-                })
+        extracted_text = extract_text_from_file(temp_path)
+        os.remove(temp_path)
 
-            doc = Document.objects.create(
-                extracted_text=extracted_text,
-                job_description=form.cleaned_data.get("job_description", "")
-            )
+        if not extracted_text.strip():
+            error = "Could not extract text from the uploaded file."
 
-            return render(request, "home/text_view.html", {
-                "document": doc,
-                "extracted_text": doc.extracted_text,
-                "job_description": doc.job_description
-            })
-    else:
-        form = DocumentForm()
+        doc = Document.objects.create(
+            extracted_text=extracted_text,
+            job_description=form.cleaned_data.get("job_description", "")
+        )
+
+        return render(request, "home/text_view.html", {
+            "document": doc,
+            "extracted_text": doc.extracted_text,
+            "job_description": doc.job_description
+        })
 
     return render(request, "home/upload.html", {
         "form": form,
         "days_left": days_left,
         "scans_left": scans_left,
+        "subscription_active": subscription.is_valid(),
+        "error": error
     })
 
 @login_required
@@ -298,6 +292,7 @@ def score_cv(request, doc_id):
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
