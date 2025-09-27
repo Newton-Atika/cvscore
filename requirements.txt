@@ -34,6 +34,7 @@ decorator==5.1.1
 defusedxml==0.7.1
 distro==1.9.0
 Django==5.1.7
+dj-database-url==2.2.0
 docstring_parser==0.17.0
 docx==0.2.4
 et_xmlfile==2.0.0
@@ -229,5 +230,6 @@ xyzservices==2025.4.0
 yarl==1.20.1
 yt-dlp==2025.8.11
 zopfli==0.2.3.post1
+
 
 
