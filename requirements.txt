@@ -164,9 +164,6 @@ pyreadstat==1.2.8
 python-dateutil==2.9.0.post0
 python-docx==1.2.0
 python-json-logger==2.0.7
-pytube==15.0.0
-pytz==2024.2
-pywin32==308
 pywinpty==2.0.14
 PyYAML==6.0.2
 pyzmq==26.2.0
@@ -231,4 +228,5 @@ xyzservices==2025.4.0
 yarl==1.20.1
 yt-dlp==2025.8.11
 zopfli==0.2.3.post1
+
 
