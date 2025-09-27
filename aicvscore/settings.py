@@ -84,7 +84,6 @@ DATABASES = {
 DATABASES = {
     'default': dj_database_url.config(
         default=os.environ.get('DATABASE_URL'),
-        conn_max_age=600,
     )
 }
 
@@ -142,4 +141,5 @@ PAYSTACK_SECRET_KEY = "sk_test_d50b2d43213a91922470eee1eea7fee305c3beff"
 
 
 OPENAI_API_KEY="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"
+
 
