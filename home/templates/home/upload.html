@@ -4,133 +4,24 @@
   <meta charset="UTF-8">
   <title>AI CV Scorer - Upload CV & Job Description</title>
   <style>
-    body {
-      background-color: #000;
-      color: #fff;
-      font-family: 'Arial', sans-serif;
-      margin: 0;
-      padding: 0;
-    }
-
-    header {
-      background-color: #111;
-      padding: 15px 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 3px solid limegreen;
-      flex-wrap: wrap;
-    }
-
-    header h1 {
-      color: limegreen;
-      font-size: 2em;
-      margin: 0;
-    }
-
-    nav a {
-      color: limegreen;
-      text-decoration: none;
-      margin-left: 20px;
-      font-weight: bold;
-      transition: 0.3s;
-    }
-
+    body { background-color: #000; color: #fff; font-family: 'Arial', sans-serif; margin: 0; padding: 0; }
+    header { background-color: #111; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid limegreen; flex-wrap: wrap; }
+    header h1 { color: limegreen; font-size: 2em; margin: 0; }
+    nav a { color: limegreen; text-decoration: none; margin-left: 20px; font-weight: bold; transition: 0.3s; }
     nav a:hover { color: #fff; }
-
-    .description {
-      max-width: 900px;
-      margin: 30px auto;
-      padding: 20px;
-      text-align: center;
-      font-size: 1.1em;
-      line-height: 1.6;
-      background-color: #111;
-      border-left: 5px solid limegreen;
-      border-radius: 8px;
-    }
-
-    .description span {
-      color: limegreen;
-      font-weight: bold;
-    }
-
-    .form-container {
-      background-color: #111;
-      border: 2px solid limegreen;
-      border-radius: 12px;
-      box-shadow: 0 0 15px limegreen;
-      width: 70%;
-      max-width: 800px;
-      margin: 40px auto;
-      padding: 30px 25px;
-      text-align: center;
-    }
-
-    input[type="file"], textarea {
-      width: 100%;
-      margin: 12px 0;
-      padding: 12px;
-      border-radius: 6px;
-      border: 1px solid limegreen;
-      background-color: #222;
-      color: #fff;
-      font-size: 1em;
-      resize: vertical;
-    }
-
+    .description { max-width: 900px; margin: 30px auto; padding: 20px; text-align: center; font-size: 1.1em; line-height: 1.6; background-color: #111; border-left: 5px solid limegreen; border-radius: 8px; }
+    .description span { color: limegreen; font-weight: bold; }
+    .form-container { background-color: #111; border: 2px solid limegreen; border-radius: 12px; box-shadow: 0 0 15px limegreen; width: 70%; max-width: 800px; margin: 40px auto; padding: 30px 25px; text-align: center; }
+    input[type="file"], textarea { width: 100%; margin: 12px 0; padding: 12px; border-radius: 6px; border: 1px solid limegreen; background-color: #222; color: #fff; font-size: 1em; resize: vertical; }
     textarea { min-height: 120px; }
-
-    input[type="file"]::-webkit-file-upload-button {
-      background-color: limegreen;
-      color: #000;
-      border: none;
-      padding: 8px 15px;
-      border-radius: 5px;
-      cursor: pointer;
-      font-weight: bold;
-    }
-
-    input[type="file"]::-webkit-file-upload-button:hover {
-      background-color: #fff;
-      color: limegreen;
-    }
-
-    button, .subscribe-btn {
-      background-color: limegreen;
-      color: #000;
-      border: none;
-      padding: 14px 30px;
-      cursor: pointer;
-      font-weight: bold;
-      border-radius: 6px;
-      font-size: 16px;
-      transition: all 0.3s ease;
-      margin-top: 10px;
-      display: inline-block;
-      text-decoration: none;
-    }
-
-    button:hover, .subscribe-btn:hover {
-      background-color: #fff;
-      color: limegreen;
-      border: 2px solid limegreen;
-    }
-
+    input[type="file"]::-webkit-file-upload-button { background-color: limegreen; color: #000; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+    input[type="file"]::-webkit-file-upload-button:hover { background-color: #fff; color: limegreen; }
+    button, .subscribe-btn { background-color: limegreen; color: #000; border: none; padding: 14px 30px; cursor: pointer; font-weight: bold; border-radius: 6px; font-size: 16px; transition: all 0.3s ease; margin-top: 10px; display: inline-block; text-decoration: none; }
+    button:hover, .subscribe-btn:hover { background-color: #fff; color: limegreen; border: 2px solid limegreen; }
     .error-message { color: #ff5555; font-weight: bold; margin-bottom: 10px; }
-
-    .subscription-box {
-      border: 1px solid limegreen;
-      padding: 15px;
-      margin-bottom: 20px;
-      border-radius: 8px;
-      background: #222;
-      text-align: left;
-    }
-
+    .subscription-box { border: 1px solid limegreen; padding: 15px; margin-bottom: 20px; border-radius: 8px; background: #222; text-align: left; }
     .subscription-box.active { border-color: limegreen; color: #0f0; }
     .subscription-box.inactive { border-color: red; color: #f55; }
-
     @media (max-width: 768px) {
       .form-container { width: 90%; padding: 20px; }
       header h1 { font-size: 1.7em; margin-bottom: 10px; }
@@ -163,7 +54,7 @@
     <h2>Upload your CV & Paste Job Description</h2>
 
     <!-- Subscription Status -->
-    {% if last_payment and last_payment.is_active %}
+    {% if subscription_active %}
       <div class="subscription-box active">
         <p><strong>✅ Subscription Active</strong></p>
         <p>Days Left: <strong>{{ days_left }}</strong></p>
