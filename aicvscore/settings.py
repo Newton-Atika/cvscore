@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-*a6sx8pz+)f2+-3#z0^!+@^5g23rg3(d&#%=a0l-+oez)b)w^c
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['cvscore-production.up.railway.app/']
+ALLOWED_HOSTS = ['cvscore-production.up.railway.app']
 
 
 # Application definition
@@ -141,6 +141,7 @@ PAYSTACK_SECRET_KEY = "sk_test_d50b2d43213a91922470eee1eea7fee305c3beff"
 
 
 OPENAI_API_KEY="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"
+
 
 
 
