@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sign Up - AI CV Scorer</title>
+  <style>
+    body {
+      background-color: #000;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 50px;
+    }
+
+    .auth-container {
+      background-color: #111;
+      border: 2px solid limegreen;
+      padding: 30px;
+      border-radius: 12px;
+      display: inline-block;
+      width: 350px;
+    }
+
+    label {
+      display: block;
+      text-align: left;
+      margin: 10px 0 5px;
+    }
+
+    .input-container {
+      position: relative;
+      width: 100%;
+      margin-bottom: 15px;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px 40px 12px 12px; /* space for toggle */
+      border-radius: 5px;
+      border: 1px solid limegreen;
+      background: #222;
+      color: #fff;
+      box-sizing: border-box;
+    }
+
+    .toggle-password {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      cursor: pointer;
+      color: limegreen;
+      font-size: 0.9em;
+      user-select: none;
+    }
+
+    button {
+      padding: 12px 25px;
+      background: limegreen;
+      border: none;
+      color: #000;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 10px;
+      width: 100%;
+    }
+
+    button:hover {
+      background: #fff;
+      color: limegreen;
+      border: 2px solid limegreen;
+    }
+
+    a { color: limegreen; text-decoration: none; }
+
+    ul.password-checklist {
+      list-style: none;
+      padding-left: 0;
+      text-align: left;
+      margin: 15px 0 0 0;
+    }
+
+    ul.password-checklist li {
+      color: red;
+      margin: 5px 0;
+    }
+
+    ul.password-checklist li.valid {
+      color: limegreen;
+    }
+  </style>
+</head>
+<body>
+  <div class="auth-container">
+    <h2>Sign Up</h2>
+    <form method="post">
+      {% csrf_token %}
+
+      <!-- Username -->
+      <label for="id_username">Username</label>
+      {{ form.username }}
+
+      <!-- Email -->
+      <label for="id_email">Email</label>
+      {{ form.email }}
+
+      <!-- Password -->
+      <label for="id_password1">Password</label>
+      <div class="input-container">
+        {{ form.password1 }}
+        <span class="toggle-password" onclick="togglePassword('id_password1')">Show</span>
+      </div>
+
+      <!-- Confirm Password -->
+      <label for="id_password2">Confirm Password</label>
+      <div class="input-container">
+        {{ form.password2 }}
+        <span class="toggle-password" onclick="togglePassword('id_password2')">Show</span>
+      </div>
+
+      <!-- Password checklist -->
+      <ul class="password-checklist">
+        <li id="length">At least 8 characters</li>
+        <li id="uppercase">At least one uppercase letter</li>
+        <li id="number">At least one number</li>
+        <li id="special">At least one special character (!@#$%^&*)</li>
+        <li id="match">Passwords match</li>
+      </ul>
+
+      <!-- Hidden next field -->
+      <input type="hidden" name="next" value="{{ next }}">
+
+      <button type="submit">Register</button>
+    </form>
+    <p>Already have an account? <a href="{% url 'login' %}">Login here</a></p>
+  </div>
+
+  <script>
+    const passwordInput = document.getElementById('id_password1');
+    const confirmInput = document.getElementById('id_password2');
+    const checklist = {
+      length: document.getElementById('length'),
+      uppercase: document.getElementById('uppercase'),
+      number: document.getElementById('number'),
+      special: document.getElementById('special'),
+      match: document.getElementById('match')
+    };
+
+    function validatePasswords() {
+      const val = passwordInput.value;
+      const confirmVal = confirmInput.value;
+      checklist.length.classList.toggle('valid', val.length >= 8);
+      checklist.uppercase.classList.toggle('valid', /[A-Z]/.test(val));
+      checklist.number.classList.toggle('valid', /\d/.test(val));
+      checklist.special.classList.toggle('valid', /[!@#$%^&*]/.test(val));
+      checklist.match.classList.toggle('valid', val === confirmVal && val !== '');
+    }
+
+    passwordInput.addEventListener('input', validatePasswords);
+    confirmInput.addEventListener('input', validatePasswords);
+
+    function togglePassword(fieldId){
+      const field = document.getElementById(fieldId);
+      const toggle = field.nextElementSibling;
+      if(field.type === 'password'){
+        field.type = 'text';
+        toggle.textContent = 'Hide';
+      } else {
+        field.type = 'password';
+        toggle.textContent = 'Show';
+      }
+    }
+  </script>
+</body>
+</html>

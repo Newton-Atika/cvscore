@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Login - AI CV Scorer</title>
+  <style>
+    body { 
+      background-color: #000; 
+      color: #fff; 
+      font-family: Arial, sans-serif; 
+      text-align: center; 
+      padding: 50px; 
+    }
+    .auth-container { 
+      background-color: #111; 
+      border: 2px solid limegreen; 
+      padding: 30px; 
+      border-radius: 12px; 
+      display: inline-block; 
+      width: 350px; 
+    }
+    input { 
+      width: 100%; 
+      padding: 12px; 
+      margin: 10px 0; 
+      border-radius: 5px; 
+      border: 1px solid limegreen; 
+      background: #222; 
+      color: #fff; 
+    }
+    button { 
+      padding: 12px 25px; 
+      background: limegreen; 
+      border: none; 
+      color: #000; 
+      font-weight: bold; 
+      border-radius: 6px; 
+      cursor: pointer; 
+      margin-top: 10px; 
+      width: 100%;
+    }
+    button:hover { 
+      background: #fff; 
+      color: limegreen; 
+      border: 2px solid limegreen; 
+    }
+    a { color: limegreen; text-decoration: none; }
+    .toggle-password { 
+      font-size: 0.9em; 
+      cursor: pointer; 
+      color: limegreen; 
+      margin-left: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="auth-container">
+    <h2>Login</h2>
+    <form method="post">
+      {% csrf_token %}
+      
+      <!-- Username/email -->
+      <label for="id_username">Username or Email</label>
+      {{ form.username }}
+
+      <!-- Password -->
+      <label for="id_password">Password</label>
+      {{ form.password }}
+      <span class="toggle-password" onclick="togglePassword('id_password')">Show/Hide</span>
+
+      <!-- Hidden next field -->
+      <input type="hidden" name="next" value="{{ next }}">
+
+      <button type="submit">Login</button>
+    </form>
+    <p>Don't have an account? <a href="{% url 'signup' %}">Sign up here</a></p>
+  </div>
+
+  <script>
+    function togglePassword(fieldId){
+      const field = document.getElementById(fieldId);
+      field.type = field.type === 'password' ? 'text' : 'password';
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Uploaded Documents</title>
+  <style>
+    body {
+      background-color: white;
+      color: black;
+      font-family: Arial, sans-serif;
+      padding: 40px;
+    }
+    h1 {
+      color: limegreen;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+    li {
+      margin: 10px 0;
+      padding: 10px;
+      border: 1px solid limegreen;
+      border-radius: 5px;
+      background: #f9f9f9;
+    }
+    a {
+      text-decoration: none;
+      color: limegreen;
+    }
+    a:hover {
+      color: black;
+    }
+  </style>
+</head>
+<body>
+  <h1>Uploaded Documents</h1>
+  <ul>
+    {% for doc in documents %}
+      <li>
+        <a href="{{ doc.file.url }}" target="_blank">{{ doc.file.name }}</a>
+        <small>(Uploaded: {{ doc.uploaded_at|date:"M d, Y H:i" }})</small>
+      </li>
+    {% empty %}
+      <p>No documents uploaded yet.</p>
+    {% endfor %}
+  </ul>
+  <p><a href="{% url 'upload_document' %}">Upload another</a></p>
+</body>
+</html>

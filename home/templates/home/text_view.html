@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Extracted CV & Job Description</title>
+  <style>
+    body { 
+      background-color: #000; 
+      color: #fff; 
+      font-family: Arial, sans-serif; 
+      padding: 40px; 
+      text-align: center;
+    }
+
+    h1 { 
+      color: limegreen; 
+      margin-bottom: 30px;
+    }
+
+    h2 { 
+      color: white; 
+      border-bottom: 2px solid limegreen; 
+      padding-bottom: 5px; 
+      margin-top: 30px;
+    }
+
+    .text-area {
+      white-space: pre-wrap; 
+      word-wrap: break-word;
+      border: 2px solid limegreen; 
+      padding: 15px;
+      border-radius: 10px; 
+      background-color: #111;
+      color: #fff;
+      max-height: 250px;
+      overflow-y: auto;
+      text-align: left;
+      margin: 10px 0 30px 0;
+    }
+
+    .button {
+      display: inline-block;
+      padding: 12px 25px;
+      margin-top: 20px;
+      background-color: limegreen;
+      color: #000;
+      font-weight: bold;
+      text-decoration: none;
+      border-radius: 5px;
+      transition: all 0.3s ease;
+    }
+
+    .button:hover { 
+      background-color: #fff; 
+      color: limegreen; 
+    }
+
+    a.upload-link {
+      color: limegreen; 
+      text-decoration: none;
+      margin-top: 20px;
+      display: inline-block;
+    }
+
+    a.upload-link:hover {
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <h1>Uploaded Data</h1>
+
+  <h2>Extracted CV Text</h2>
+  <div class="text-area">{{ extracted_text }}</div>
+
+  <h2>Job Description</h2>
+  <div class="text-area">{{ job_description }}</div>
+
+  <!-- Score CV Button -->
+  <a href="{% url 'score_cv' document.id %}" class="button">Score My CV</a>
+
+  <p>
+    <a href="{% url 'upload_document' %}" class="upload-link">Upload another CV</a>
+  </p>
+</body>
+</html>
