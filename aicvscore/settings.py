@@ -83,7 +83,7 @@ DATABASES = {
 }
 DATABASES = {
     'default': dj_database_url.config(
-        default=os.environ.get('DATABASE_URL'),
+        default=os.environ.get('DATABASE_URL')
     )
 }
 
@@ -144,6 +144,7 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 OPENAI_API_KEY="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"
+
 
 
 
