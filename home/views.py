@@ -148,6 +148,7 @@ def verify_payment(request):
         })
 
 # ---------- DOCUMENT FLOW ----------
+@login_required(login_url='login')  # redirect anonymous users to login page
 def upload_document(request):
     # Ensure subscription exists for the user
     subscription, _ = Subscription.objects.get_or_create(user=request.user)
@@ -303,4 +304,5 @@ def score_cv(request, doc_id):
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
