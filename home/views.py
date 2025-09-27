@@ -205,27 +205,21 @@ def upload_document(request):
 
 @login_required
 def score_cv(request, doc_id):
-    # Get last verified payment
-    last_payment = Payment.objects.filter(user=request.user, verified=True).order_by('-created_at').first()
+   subscription, _ = Subscription.objects.get_or_create(user=request.user)
 
-    # First scan free
-    if not last_payment:
-        payment = Payment.objects.create(
-            user=request.user,
-            amount=0,
-            verified=True,
-            expiry_date=timezone.now() + timedelta(days=30),
-            scans_used=1
-        )
-    elif not last_payment.is_active():
-        return redirect('initiate_payment')  # Redirect to subscription page
-    else:
-        # Increment scans
-        if last_payment.scans_used >= 120:
-            return redirect('initiate_payment')
-        last_payment.scans_used += 1
-        last_payment.save()
+    # First scan free: start subscription if never used
+    if not subscription.free_trial_used:
+        subscription.start_subscription(free=True)
 
+    # Check if subscription valid
+    if not subscription.is_valid():
+        return redirect('initiate_payment')  # redirect to pay
+
+    # Deduct scan
+    if not subscription.deduct_scan():
+        return redirect('initiate_payment')  # no scans left
+
+    # Get document
     doc = get_object_or_404(Document, id=doc_id)
     """Score CV against job description using AI (with subscription check)"""
     subscription, _ = Subscription.objects.get_or_create(user=request.user)
@@ -304,5 +298,6 @@ def score_cv(request, doc_id):
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
