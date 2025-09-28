@@ -210,20 +210,52 @@ def upload_document(request):
 
 
 @login_required
+def safe_score(val):
+    """Sanitize score (NaN, string, out of bounds)."""
+    try:
+        if isinstance(val, str):
+            val = int(re.sub(r"[^0-9]", "", val) or 0)
+        if not isinstance(val, (int, float)) or val != val:  # NaN
+            return 0
+        return max(0, min(100, int(val)))
+    except Exception:
+        return 0
+
+
+def safe_pie_chart(values, labels, colors, title=""):
+    """Create safe pie chart → returns base64 string."""
+    # Replace NaN/invalid with 0
+    values = [0 if (not isinstance(v, (int, float)) or v != v) else v for v in values]
+    total = sum(values)
+
+    if total <= 0:
+        values = [1]
+        labels = ["No Data"]
+        colors = ["gray"]
+
+    plt.figure(figsize=(4, 4))
+    plt.pie(values, labels=labels, colors=colors, autopct="%1.0f%%", startangle=90)
+    plt.title(title, color="limegreen")
+
+    buf = io.BytesIO()
+    plt.savefig(buf, format="png", transparent=True)
+    plt.close()
+    buf.seek(0)
+    return base64.b64encode(buf.getvalue()).decode("utf-8")
+
+
 def score_cv(request, doc_id):
     subscription, _ = Subscription.objects.get_or_create(user=request.user)
 
     if not subscription.free_trial_used:
         subscription.start_subscription(free=True)
 
-    if not subscription.is_valid():
-        return redirect('initiate_payment')
-
-    if not subscription.deduct_scan():
-        return redirect('initiate_payment')
+    if not subscription.is_valid() or not subscription.deduct_scan():
+        return redirect("initiate_payment")
 
     doc = get_object_or_404(Document, id=doc_id)
 
+    # --- Prompt ---
     prompt = f"""
     Analyze the following CV against the Job Description.
     Output JSON ONLY.
@@ -243,89 +275,83 @@ def score_cv(request, doc_id):
 
     prompt += f"\nJob Description:\n{doc.job_description}\nCV:\n{doc.extracted_text}"
 
+    # --- Call OpenAI ---
     try:
         client = OpenAI(api_key=settings.OPENAI_API_KEY)
         response = client.chat.completions.create(
             model="gpt-5-nano",
             messages=[{"role": "user", "content": prompt}],
-            temperature=1
+            temperature=1,
         )
         ai_text = response.choices[0].message.content.strip()
     except Exception as e:
         print("OpenAI error:", str(e))
         ai_text = '{"match_percentage":0,"matched_skills":[],"missing_skills":[],"missing_experience":[],"missing_keywords":[],"matched_keywords":[],"missing_referees":[],"missing_education":[],"spelling_errors_count":0,"incomplete_text_snippets":[]}'
 
+    # --- Parse AI JSON ---
     try:
         json_str = re.search(r"\{.*\}", ai_text, re.DOTALL).group()
         ai_data = json.loads(json_str)
     except Exception:
         ai_data = json.loads(ai_text)
 
-    if isinstance(ai_data.get("match_percentage"), str):
-        ai_data["match_percentage"] = int(re.sub(r"[^0-9]", "", ai_data["match_percentage"]) or 0)
+    ai_data["match_percentage"] = safe_score(ai_data.get("match_percentage", 0))
 
-    ### 1️⃣ Skills Pie Chart
-    skills_counts = [len(ai_data.get("matched_skills", [])), len(ai_data.get("missing_skills", []))]
-    skills_labels = ["Matched Skills", "Missing Skills"]
-    plt.figure(figsize=(4,4))
-    plt.pie(skills_counts, labels=skills_labels, colors=["limegreen","red"], autopct='%1.0f%%')
-    plt.title("Skills Analysis")
-    buf1 = io.BytesIO()
-    plt.savefig(buf1, format='png')
-    plt.close()
-    buf1.seek(0)
-    skills_chart = base64.b64encode(buf1.getvalue()).decode('utf-8')
+    # --- Charts ---
+    skills_chart = safe_pie_chart(
+        [
+            len(ai_data.get("matched_skills", [])),
+            len(ai_data.get("missing_skills", [])),
+        ],
+        ["Matched Skills", "Missing Skills"],
+        ["limegreen", "red"],
+        "Skills Analysis",
+    )
 
-    ### 2️⃣ Experience Pie Chart
-    exp_counts = [len(ai_data.get("matched_skills", [])), len(ai_data.get("missing_experience", []))]
-    exp_labels = ["Relevant Experience", "Missing Experience"]
-    plt.figure(figsize=(4,4))
-    plt.pie(exp_counts, labels=exp_labels, colors=["limegreen","orange"], autopct='%1.0f%%')
-    plt.title("Work Experience Analysis")
-    buf2 = io.BytesIO()
-    plt.savefig(buf2, format='png')
-    plt.close()
-    buf2.seek(0)
-    experience_chart = base64.b64encode(buf2.getvalue()).decode('utf-8')
+    experience_chart = safe_pie_chart(
+        [
+            len(ai_data.get("matched_keywords", [])),
+            len(ai_data.get("missing_experience", [])),
+        ],
+        ["Relevant Experience", "Missing Experience"],
+        ["limegreen", "orange"],
+        "Work Experience Analysis",
+    )
 
-    ### 3️⃣ Education Pie Chart
-    edu_present = 1 if not ai_data.get("missing_education") else 0
-    edu_missing = 1 - edu_present
-    plt.figure(figsize=(4,4))
-    plt.pie([edu_present, edu_missing], labels=["Present","Missing"], colors=["limegreen","red"], autopct='%1.0f%%')
-    plt.title("Education Analysis")
-    buf3 = io.BytesIO()
-    plt.savefig(buf3, format='png')
-    plt.close()
-    buf3.seek(0)
-    education_chart = base64.b64encode(buf3.getvalue()).decode('utf-8')
+    edu_chart = safe_pie_chart(
+        [0 if ai_data.get("missing_education") else 1, 1 if ai_data.get("missing_education") else 0],
+        ["Present", "Missing"],
+        ["limegreen", "red"],
+        "Education Analysis",
+    )
 
-    ### 4️⃣ Overall Score Pie Chart
-    overall_score = ai_data.get("match_percentage",0)
-    plt.figure(figsize=(4,4))
-    plt.pie([overall_score, 100-overall_score], labels=["Score Achieved", "Remaining"], colors=["limegreen","gray"], autopct='%1.0f%%')
-    plt.title("Overall CV Match Score")
-    buf4 = io.BytesIO()
-    plt.savefig(buf4, format='png')
-    plt.close()
-    buf4.seek(0)
-    overall_chart = base64.b64encode(buf4.getvalue()).decode('utf-8')
+    overall_chart = safe_pie_chart(
+        [ai_data["match_percentage"], 100 - ai_data["match_percentage"]],
+        ["Score Achieved", "Remaining"],
+        ["limegreen", "gray"],
+        "Overall CV Match Score",
+    )
 
-    return render(request, "home/cv_score.html", {
-        "document": doc,
-        "ai_data": ai_data,
-        "skills_chart": skills_chart,
-        "experience_chart": experience_chart,
-        "education_chart": education_chart,
-        "overall_chart": overall_chart,
-        "scans_left": subscription.scans_remaining,
-        "expires_at": subscription.expires_at
-    })
+    return render(
+        request,
+        "home/cv_score.html",
+        {
+            "document": doc,
+            "ai_data": ai_data,
+            "skills_chart": skills_chart,
+            "experience_chart": experience_chart,
+            "education_chart": edu_chart,
+            "overall_chart": overall_chart,
+            "scans_left": subscription.scans_remaining,
+            "expires_at": subscription.expires_at,
+        },
+    )
 
 @login_required
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
