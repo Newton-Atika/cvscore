@@ -160,22 +160,10 @@ def clean_text(text):
     return re.sub(r"[\x00-\x1f\x7f]", "", text)
 @login_required(login_url='login')
 def upload_document(request):
-    subscription, _ = Subscription.objects.get_or_create(user=request.user)
-
-    # Redirect to payment if subscription invalid and free trial already used
-    if not subscription.is_valid() and subscription.free_trial_used:
-        return redirect("initiate_payment")
-
-    days_left = (subscription.expires_at - timezone.now()).days if subscription.expires_at else 0
-    scans_left = subscription.scans_remaining
-
     form = DocumentForm(request.POST or None, request.FILES or None)
     error = None
 
     if request.method == "POST" and form.is_valid():
-        if not subscription.deduct_scan():
-            return redirect("initiate_payment")
-
         uploaded_file = request.FILES['file']
         with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(uploaded_file.name)[1]) as tmp_file:
             for chunk in uploaded_file.chunks():
@@ -185,7 +173,6 @@ def upload_document(request):
         extracted_text = extract_text_from_file(temp_path)
         os.remove(temp_path)
 
-        # ✅ Clean the extracted text before saving
         extracted_text = clean_text(extracted_text)
 
         if not extracted_text.strip():
@@ -204,12 +191,8 @@ def upload_document(request):
 
     return render(request, "home/upload.html", {
         "form": form,
-        "days_left": days_left,
-        "scans_left": scans_left,
-        "subscription_active": subscription.is_valid(),
         "error": error
     })
-
 def safe_score(val):
     """Sanitize score (NaN, string, out of bounds)."""
     try:
@@ -359,6 +342,7 @@ def score_cv(request, doc_id):
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
