@@ -143,7 +143,7 @@ CSRF_TRUSTED_ORIGINS = [
     "https://cvscore-production.up.railway.app",
 ]
 
-OPENAI_API_KEY="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"
+OPENAI_API_KEY=os.environ.get('OPENAI_API_KEY')
 
 
 
