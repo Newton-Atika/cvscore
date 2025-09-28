@@ -1,218 +1,290 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>AI CV Analyzer</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Arial, sans-serif;
-            background-color: #0a0a0a;
-            color: #eee;
-            margin: 0;
-            padding: 0;
-        }
+  <meta charset="UTF-8">
+  <title>AI CV Analyzer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background-color: #0a0a0a;
+      color: #eee;
+      margin: 0;
+      padding: 0;
+    }
 
-        /* Navbar */
-        nav {
-            background-color: #111;
-            padding: 15px 40px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 2px solid limegreen;
-        }
+    /* Navbar */
+    nav {
+      background-color: #111;
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid limegreen;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
 
-        nav .logo {
-            color: limegreen;
-            font-size: 1.5rem;
-            font-weight: bold;
-            letter-spacing: 1px;
-        }
+    nav .logo {
+      color: limegreen;
+      font-size: 1.6rem;
+      font-weight: bold;
+      letter-spacing: 1px;
+    }
 
-        nav ul {
-            list-style: none;
-            display: flex;
-            gap: 20px;
-        }
+    nav ul {
+      list-style: none;
+      display: flex;
+      gap: 20px;
+      margin: 0;
+      padding: 0;
+    }
 
-        nav ul li {
-            display: inline;
-        }
+    nav ul li {
+      display: inline;
+    }
 
-        nav ul li a {
-            color: #eee;
-            text-decoration: none;
-            font-weight: bold;
-        }
+    nav ul li a {
+      color: #eee;
+      text-decoration: none;
+      font-weight: bold;
+      transition: color 0.3s ease;
+    }
 
-        nav ul li a:hover {
-            color: limegreen;
-        }
+    nav ul li a:hover {
+      color: limegreen;
+    }
 
-        /* Hero Section */
-        .hero {
-            text-align: center;
-            padding: 80px 20px;
-            background: linear-gradient(135deg, #0a0a0a, #111);
-            border-bottom: 2px solid limegreen;
-        }
+    /* Hamburger */
+    .menu-toggle {
+      display: none;
+      flex-direction: column;
+      cursor: pointer;
+    }
+    .menu-toggle span {
+      background: limegreen;
+      height: 3px;
+      width: 25px;
+      margin: 4px 0;
+      border-radius: 2px;
+      transition: 0.4s;
+    }
 
-        .hero h1 {
-            color: limegreen;
-            font-size: 2.5rem;
-            margin-bottom: 20px;
-        }
+    /* Hero Section */
+    .hero {
+      text-align: center;
+      padding: 70px 20px;
+      background: linear-gradient(135deg, #0a0a0a, #111);
+      border-bottom: 2px solid limegreen;
+    }
 
-        .hero p {
-            font-size: 1.2rem;
-            color: #ccc;
-            max-width: 700px;
-            margin: 0 auto 30px auto;
-        }
+    .hero h1 {
+      color: limegreen;
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      margin-bottom: 20px;
+    }
 
-        .hero a {
-            display: inline-block;
-            background-color: limegreen;
-            color: #111;
-            padding: 12px 30px;
-            border-radius: 8px;
-            font-weight: bold;
-            text-decoration: none;
-            transition: 0.3s;
-        }
+    .hero p {
+      font-size: clamp(1rem, 2.5vw, 1.2rem);
+      color: #ccc;
+      max-width: 700px;
+      margin: 0 auto 30px auto;
+      line-height: 1.6;
+    }
 
-        .hero a:hover {
-            background-color: #fff;
-            color: #000;
-        }
+    .hero a {
+      display: inline-block;
+      background-color: limegreen;
+      color: #111;
+      padding: 12px 30px;
+      border-radius: 8px;
+      font-weight: bold;
+      text-decoration: none;
+      transition: all 0.3s;
+    }
 
-        /* Criteria Section */
-        .criteria {
-            padding: 60px 20px;
-            max-width: 900px;
-            margin: 0 auto;
-        }
+    .hero a:hover {
+      background-color: #fff;
+      color: #000;
+    }
 
-        .criteria h2 {
-            color: limegreen;
-            text-align: center;
-            margin-bottom: 30px;
-        }
+    /* Criteria Section */
+    .criteria {
+      padding: 50px 20px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
 
-        .criteria ul {
-            list-style: none;
-            padding: 0;
-            line-height: 1.8rem;
-        }
+    .criteria h2 {
+      color: limegreen;
+      text-align: center;
+      margin-bottom: 25px;
+      font-size: clamp(1.5rem, 3vw, 2rem);
+    }
 
-        .criteria ul li::before {
-            content: "✔ ";
-            color: limegreen;
-            font-weight: bold;
-        }
+    .criteria ul {
+      list-style: none;
+      padding: 0;
+      line-height: 1.8rem;
+    }
 
-        /* Benefits Section */
-        .benefits {
-            padding: 60px 20px;
-            background-color: #111;
-        }
+    .criteria ul li {
+      margin-bottom: 10px;
+    }
 
-        .benefits h2 {
-            color: limegreen;
-            text-align: center;
-            margin-bottom: 30px;
-        }
+    .criteria ul li::before {
+      content: "✔ ";
+      color: limegreen;
+      font-weight: bold;
+    }
 
-        .benefits-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-        }
+    /* Benefits Section */
+    .benefits {
+      padding: 50px 20px;
+      background-color: #111;
+    }
 
-        .benefit-card {
-            background: #1a1a1a;
-            border: 1px solid limegreen;
-            border-radius: 10px;
-            padding: 20px;
-            text-align: center;
-            box-shadow: 0px 0px 10px #0f0;
-        }
+    .benefits h2 {
+      color: limegreen;
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: clamp(1.5rem, 3vw, 2rem);
+    }
 
-        .benefit-card h3 {
-            color: limegreen;
-            margin-bottom: 10px;
-        }
+    .benefits-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+    }
 
-        footer {
-            text-align: center;
-            padding: 20px;
-            margin-top: 40px;
-            border-top: 2px solid limegreen;
-            font-size: 0.9rem;
-            color: #777;
-        }
-    </style>
+    .benefit-card {
+      background: #1a1a1a;
+      border: 1px solid limegreen;
+      border-radius: 10px;
+      padding: 20px;
+      text-align: center;
+      box-shadow: 0px 0px 10px rgba(0, 255, 0, 0.5);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .benefit-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0px 0px 20px rgba(0, 255, 0, 0.8);
+    }
+
+    .benefit-card h3 {
+      color: limegreen;
+      margin-bottom: 10px;
+    }
+
+    footer {
+      text-align: center;
+      padding: 20px;
+      margin-top: 40px;
+      border-top: 2px solid limegreen;
+      font-size: 0.9rem;
+      color: #777;
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+      nav ul {
+        display: none;
+        flex-direction: column;
+        width: 100%;
+        background-color: #111;
+        position: absolute;
+        top: 60px;
+        left: 0;
+        padding: 10px 0;
+      }
+
+      nav ul.active {
+        display: flex;
+      }
+
+      .menu-toggle {
+        display: flex;
+      }
+    }
+  </style>
 </head>
 <body>
 
-    <!-- Navigation Bar -->
-    <nav>
-        <div class="logo">AI CV Analyzer</div>
-        <ul>
-            {% if user.is_authenticated %}
-            <li><a href="{% url 'logout' %}">Logout</a></li>
-            {% else %}
-            <li><a href="{% url 'signup' %}">Sign Up</a></li>
-            <li><a href="{% url 'login' %}">Login</a></li>
-            {% endif %}
-        </ul>
-    </nav>
+  <!-- Navigation Bar -->
+  <nav>
+    <div class="logo">AI CV Analyzer</div>
+    <div class="menu-toggle" id="menu-toggle">
+      <span></span>
+      <span></span>
+      <span></span>
+    </div>
+    <ul id="menu">
+      {% if user.is_authenticated %}
+      <li><a href="{% url 'logout' %}">Logout</a></li>
+      {% else %}
+      <li><a href="{% url 'signup' %}">Sign Up</a></li>
+      <li><a href="{% url 'login' %}">Login</a></li>
+      {% endif %}
+    </ul>
+  </nav>
 
-    <!-- Hero Section -->
-    <section class="hero">
-        <h1>Supercharge Your Job Applications 🚀</h1>
-        <p>Upload your CV and job description, and let our AI analyze your match score, skills, experience, and more. Get clear, actionable insights before applying.</p>
-        <a href="{% url 'upload_document' %}">Upload Your CV Now</a>
-    </section>
+  <!-- Hero Section -->
+  <section class="hero">
+    <h1>Supercharge Your Job Applications 🚀</h1>
+    <p>Upload your CV and job description, and let our AI analyze your match score, skills, experience, and more. Get clear, actionable insights before applying.</p>
+    <a href="{% url 'upload_document' %}">Upload Your CV Now</a>
+  </section>
 
-    <!-- Criteria Section -->
-    <section class="criteria">
-        <h2>How We Compare Your CV</h2>
-        <ul>
-            <li>Skills Match – We analyze required vs. provided skills.</li>
-            <li>Experience Match – Compare job requirements with your history.</li>
-            <li>Education Check – Ensure education aligns with role needs.</li>
-            <li>Keyword Match – Optimize CV for ATS screening.</li>
-            <li>Referees & Quality – Detect missing referees or incomplete info.</li>
-        </ul>
-    </section>
+  <!-- Criteria Section -->
+  <section class="criteria">
+    <h2>How We Compare Your CV</h2>
+    <ul>
+      <li>Skills Match – We analyze required vs. provided skills.</li>
+      <li>Experience Match – Compare job requirements with your history.</li>
+      <li>Education Check – Ensure education aligns with role needs.</li>
+      <li>Keyword Match – Optimize CV for ATS screening.</li>
+      <li>Referees & Quality – Detect missing referees or incomplete info.</li>
+    </ul>
+  </section>
 
-    <!-- Benefits Section -->
-    <section class="benefits">
-        <h2>Why Use Our Platform?</h2>
-        <div class="benefits-grid">
-            <div class="benefit-card">
-                <h3>Instant Feedback</h3>
-                <p>Get a score and detailed breakdown in seconds.</p>
-            </div>
-            <div class="benefit-card">
-                <h3>ATS-Friendly</h3>
-                <p>Ensure your CV is optimized for Applicant Tracking Systems.</p>
-            </div>
-            <div class="benefit-card">
-                <h3>Highlight Strengths</h3>
-                <p>See which areas of your CV stand out most.</p>
-            </div>
-            <div class="benefit-card">
-                <h3>Identify Gaps</h3>
-                <p>Discover missing skills, keywords, or experience early.</p>
-            </div>
-        </div>
-    </section>
+  <!-- Benefits Section -->
+  <section class="benefits">
+    <h2>Why Use Our Platform?</h2>
+    <div class="benefits-grid">
+      <div class="benefit-card">
+        <h3>Instant Feedback</h3>
+        <p>Get a score and detailed breakdown in seconds.</p>
+      </div>
+      <div class="benefit-card">
+        <h3>ATS-Friendly</h3>
+        <p>Ensure your CV is optimized for Applicant Tracking Systems.</p>
+      </div>
+      <div class="benefit-card">
+        <h3>Highlight Strengths</h3>
+        <p>See which areas of your CV stand out most.</p>
+      </div>
+      <div class="benefit-card">
+        <h3>Identify Gaps</h3>
+        <p>Discover missing skills, keywords, or experience early.</p>
+      </div>
+    </div>
+  </section>
 
-    <footer>
-        © 2025 AI CV Analyzer. All Rights Reserved.
-    </footer>
+  <footer>
+    © 2025 AI CV Analyzer. All Rights Reserved.
+  </footer>
+
+  <script>
+    // Mobile Menu Toggle
+    const menuToggle = document.getElementById('menu-toggle');
+    const menu = document.getElementById('menu');
+
+    menuToggle.addEventListener('click', () => {
+      menu.classList.toggle('active');
+    });
+  </script>
 
 </body>
 </html>
