@@ -49,7 +49,8 @@ def login_view(request):
         form = AuthenticationForm()
     return render(request, 'home/login.html', {'form': form, 'next': next_url})
 
-
+def home(request):
+    return render(request, "home/home.html")
 @require_http_methods(["GET", "POST"])
 def logout_view(request):
     logout(request)
@@ -358,5 +359,6 @@ def score_cv(request, doc_id):
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
