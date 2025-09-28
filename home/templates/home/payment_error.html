@@ -1,35 +1,135 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Payment Error</title>
-    <style>
-        body {
-            background-color: #000;
-            color: #fff;
-            font-family: Arial, sans-serif;
-            text-align: center;
-            padding: 50px;
-        }
-        h1 {
-            color: red;
-        }
-        p {
-            font-size: 1.2em;
-        }
-        a {
-            color: limegreen;
-            text-decoration: none;
-            font-weight: bold;
-        }
-        a:hover {
-            color: white;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>Payment Error - AI CV Scorer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      background-color: #000;
+      color: #fff;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      text-align: center;
+    }
+
+    /* Navigation */
+    nav {
+      background: #111;
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid limegreen;
+      flex-wrap: wrap;
+    }
+    nav .logo {
+      color: limegreen;
+      font-size: 1.3rem;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    nav ul {
+      list-style: none;
+      display: flex;
+      gap: 15px;
+      margin: 10px 0 0 0;
+      padding: 0;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    nav ul li a {
+      color: #fff;
+      text-decoration: none;
+      font-weight: bold;
+      font-size: 0.95rem;
+    }
+    nav ul li a:hover {
+      color: limegreen;
+    }
+
+    /* Error container */
+    .error-container {
+      margin: 60px 20px;
+      background: #111;
+      border: 2px solid red;
+      border-radius: 12px;
+      padding: 30px 20px;
+      box-shadow: 0 0 12px red;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    h1 {
+      color: red;
+      margin-bottom: 20px;
+      font-size: 1.8rem;
+    }
+
+    p {
+      font-size: 1.1rem;
+      margin: 15px 0;
+      line-height: 1.5;
+    }
+
+    a {
+      color: limegreen;
+      text-decoration: none;
+      font-weight: bold;
+    }
+    a:hover {
+      color: #fff;
+    }
+
+    /* Mobile tweaks */
+    @media (max-width: 600px) {
+      nav {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      nav .logo {
+        font-size: 1.2rem;
+        margin-bottom: 8px;
+      }
+      nav ul {
+        justify-content: flex-start;
+        gap: 10px;
+      }
+      .error-container {
+        margin: 40px 15px;
+        padding: 25px 15px;
+      }
+      h1 {
+        font-size: 1.5rem;
+      }
+      p {
+        font-size: 1rem;
+      }
+    }
+  </style>
 </head>
 <body>
+
+  <!-- Navigation -->
+  <nav>
+    <div class="logo">AI CV Scorer</div>
+    <ul>
+      <li><a href="{% url 'home' %}">Home</a></li>
+      <li><a href="{% url 'upload_document' %}">Upload CV</a></li>
+      <li><a href="{% url 'signup' %}">Signup</a></li>
+      <li><a href="{% url 'login' %}">Login</a></li>
+    </ul>
+  </nav>
+
+  <!-- Error Box -->
+  <div class="error-container">
     <h1>Payment Error</h1>
     <p>{{ message }}</p>
-    <p><a href="{% url 'upload_document' %}">Go back to Upload Page</a></p>
+    <p><a href="{% url 'upload_document' %}">⬅ Go back to Upload Page</a></p>
+  </div>
+
 </body>
 </html>
