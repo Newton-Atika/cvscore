@@ -253,22 +253,24 @@ def score_cv(request, doc_id):
     # --- Get document ---
     doc = get_object_or_404(Document, id=doc_id)
 
-    # --- Prepare AI prompt ---
+    # --- Prepare AI prompt with explicit example ---
     prompt = f"""
     Analyze the following CV against the Job Description.
-    Output JSON ONLY.
+    Output JSON ONLY, strictly following this format:
 
-    Fields:
-    - match_percentage (0-100)
-    - matched_skills (list)
-    - missing_skills (list)
-    - missing_experience (list)
-    - missing_keywords (list)
-    - matched_keywords (list)
-    - missing_referees (list)
-    - missing_education (list)
-    - spelling_errors_count (number)
-    - incomplete_text_snippets (list)
+    Example:
+    {{
+        "match_percentage": 85,
+        "matched_skills": ["Procurement planning", "Contract management"],
+        "missing_skills": ["Negotiation"],
+        "matched_keywords": ["Procurement software", "Asset Disposal Act"],
+        "missing_keywords": ["SAP"],
+        "missing_experience": ["Experience in strategic sourcing"],
+        "missing_referees": ["Referee contact missing"],
+        "missing_education": [],
+        "spelling_errors_count": 2,
+        "incomplete_text_snippets": ["[school went]"]
+    }}
 
     Job Description:
     {doc.job_description}
@@ -288,35 +290,46 @@ def score_cv(request, doc_id):
         ai_text = response.choices[0].message.content.strip()
     except Exception as e:
         print("OpenAI error:", str(e))
-        ai_text = '{"match_percentage":0,"matched_skills":[],"missing_skills":[],"missing_experience":[],"missing_keywords":[],"matched_keywords":[],"missing_referees":[],"missing_education":[],"spelling_errors_count":0,"incomplete_text_snippets":[]}'
+        ai_text = '{}'
 
-    # --- Parse AI JSON ---
+    # --- Parse AI JSON safely ---
     try:
         json_str = re.search(r"\{.*\}", ai_text, re.DOTALL).group()
         ai_data = json.loads(json_str)
     except Exception:
-        ai_data = json.loads(ai_text)
+        ai_data = {}
 
-    # --- Safe conversions ---
-    ai_data["match_percentage"] = safe_score(ai_data.get("match_percentage"))
+    # --- Safe defaults ---
+    ai_data.setdefault("match_percentage", 0)
+    ai_data.setdefault("matched_skills", [])
+    ai_data.setdefault("missing_skills", [])
+    ai_data.setdefault("matched_keywords", [])
+    ai_data.setdefault("missing_keywords", [])
+    ai_data.setdefault("missing_experience", [])
+    ai_data.setdefault("missing_referees", [])
+    ai_data.setdefault("missing_education", [])
+    ai_data.setdefault("spelling_errors_count", 0)
+    ai_data.setdefault("incomplete_text_snippets", [])
+
+    ai_data["match_percentage"] = safe_score(ai_data["match_percentage"])
 
     # --- Pie charts ---
     skills_chart = safe_pie_chart(
-        [len(ai_data.get("matched_skills", [])), len(ai_data.get("missing_skills", []))],
+        [len(ai_data["matched_skills"]), len(ai_data["missing_skills"])],
         ["Matched Skills", "Missing Skills"],
         ["limegreen", "red"],
         "Skills Analysis"
     )
 
     experience_chart = safe_pie_chart(
-        [len(ai_data.get("matched_keywords", [])), len(ai_data.get("missing_experience", []))],
+        [len(ai_data["matched_keywords"]), len(ai_data["missing_experience"])],
         ["Relevant Experience", "Missing Experience"],
         ["limegreen", "orange"],
         "Work Experience Analysis"
     )
 
     education_chart = safe_pie_chart(
-        [0 if ai_data.get("missing_education") else 1, 1 if ai_data.get("missing_education") else 0],
+        [1 if not ai_data["missing_education"] else 0, 1 if ai_data["missing_education"] else 0],
         ["Present", "Missing"],
         ["limegreen", "red"],
         "Education Analysis"
@@ -339,20 +352,8 @@ def score_cv(request, doc_id):
         "scans_left": subscription.scans_remaining,
         "expires_at": subscription.expires_at,
     })
+    
 @login_required
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
-
-
-
-
-
-
-
-
-
-
-
-
-
