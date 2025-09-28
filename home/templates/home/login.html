@@ -7,10 +7,45 @@
     body { 
       background-color: #000; 
       color: #fff; 
-      font-family: Arial, sans-serif; 
+      font-family: 'Segoe UI', Arial, sans-serif; 
       text-align: center; 
-      padding: 50px; 
+      margin: 0; 
+      padding: 0; 
     }
+
+    /* Navigation */
+    nav {
+      background: #111;
+      padding: 15px 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid limegreen;
+    }
+    nav .logo {
+      color: limegreen;
+      font-size: 1.5rem;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    nav ul {
+      list-style: none;
+      display: flex;
+      gap: 20px;
+      margin: 0;
+      padding: 0;
+    }
+    nav ul li a {
+      color: #fff;
+      text-decoration: none;
+      font-weight: bold;
+    }
+    nav ul li a:hover {
+      color: limegreen;
+    }
+
+    /* Login container */
     .auth-container { 
       background-color: #111; 
       border: 2px solid limegreen; 
@@ -18,7 +53,10 @@
       border-radius: 12px; 
       display: inline-block; 
       width: 350px; 
+      margin-top: 60px;
+      box-shadow: 0 0 12px limegreen;
     }
+
     input { 
       width: 100%; 
       padding: 12px; 
@@ -28,6 +66,7 @@
       background: #222; 
       color: #fff; 
     }
+
     button { 
       padding: 12px 25px; 
       background: limegreen; 
@@ -38,13 +77,17 @@
       cursor: pointer; 
       margin-top: 10px; 
       width: 100%;
+      transition: all 0.3s ease-in-out;
     }
     button:hover { 
       background: #fff; 
       color: limegreen; 
       border: 2px solid limegreen; 
     }
+
     a { color: limegreen; text-decoration: none; }
+    a:hover { color: #fff; }
+
     .toggle-password { 
       font-size: 0.9em; 
       cursor: pointer; 
@@ -54,6 +97,19 @@
   </style>
 </head>
 <body>
+
+  <!-- Navigation -->
+  <nav>
+    <div class="logo">AI CV Scorer</div>
+    <ul>
+      <li><a href="{% url 'home' %}">Home</a></li>
+      <li><a href="{% url 'upload_document' %}">Upload CV</a></li>
+      <li><a href="{% url 'signup' %}">Signup</a></li>
+      <li><a href="{% url 'login' %}">Login</a></li>
+    </ul>
+  </nav>
+
+  <!-- Login form -->
   <div class="auth-container">
     <h2>Login</h2>
     <form method="post">
@@ -79,7 +135,9 @@
   <script>
     function togglePassword(fieldId){
       const field = document.getElementById(fieldId);
-      field.type = field.type === 'password' ? 'text' : 'password';
+      if (field) {
+        field.type = field.type === 'password' ? 'text' : 'password';
+      }
     }
   </script>
 </body>
