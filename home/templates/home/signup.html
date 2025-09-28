@@ -3,28 +3,40 @@
 <head>
   <meta charset="UTF-8">
   <title>Sign Up - AI CV Scorer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"> <!-- Mobile scaling -->
   <style>
     body {
       background-color: #000;
       color: #fff;
-      font-family: Arial, sans-serif;
-      text-align: center;
-      padding: 50px;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
     }
 
     .auth-container {
       background-color: #111;
       border: 2px solid limegreen;
-      padding: 30px;
+      padding: 25px 20px;
       border-radius: 12px;
-      display: inline-block;
-      width: 350px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 0 12px limegreen;
+    }
+
+    h2 {
+      margin-bottom: 20px;
+      color: limegreen;
     }
 
     label {
       display: block;
       text-align: left;
       margin: 10px 0 5px;
+      font-size: 0.95rem;
     }
 
     .input-container {
@@ -36,10 +48,11 @@
     input {
       width: 100%;
       padding: 12px 40px 12px 12px; /* space for toggle */
-      border-radius: 5px;
+      border-radius: 6px;
       border: 1px solid limegreen;
       background: #222;
       color: #fff;
+      font-size: 1rem;
       box-sizing: border-box;
     }
 
@@ -50,20 +63,21 @@
       transform: translateY(-50%);
       cursor: pointer;
       color: limegreen;
-      font-size: 0.9em;
+      font-size: 0.9rem;
       user-select: none;
     }
 
     button {
-      padding: 12px 25px;
+      padding: 12px;
       background: limegreen;
       border: none;
       color: #000;
       font-weight: bold;
       border-radius: 6px;
       cursor: pointer;
-      margin-top: 10px;
+      margin-top: 15px;
       width: 100%;
+      font-size: 1rem;
     }
 
     button:hover {
@@ -72,13 +86,21 @@
       border: 2px solid limegreen;
     }
 
-    a { color: limegreen; text-decoration: none; }
+    a { 
+      color: limegreen; 
+      text-decoration: none; 
+    }
+
+    a:hover {
+      color: #fff;
+    }
 
     ul.password-checklist {
       list-style: none;
       padding-left: 0;
       text-align: left;
       margin: 15px 0 0 0;
+      font-size: 0.9rem;
     }
 
     ul.password-checklist li {
@@ -88,6 +110,23 @@
 
     ul.password-checklist li.valid {
       color: limegreen;
+    }
+
+    /* Mobile adjustments */
+    @media (max-width: 480px) {
+      body {
+        padding: 20px;
+      }
+      .auth-container {
+        padding: 20px 15px;
+        border-width: 1.5px;
+      }
+      input, button {
+        font-size: 0.95rem;
+      }
+      label {
+        font-size: 0.9rem;
+      }
     }
   </style>
 </head>
@@ -133,7 +172,7 @@
 
       <button type="submit">Register</button>
     </form>
-    <p>Already have an account? <a href="{% url 'login' %}">Login here</a></p>
+    <p style="margin-top:15px;">Already have an account? <a href="{% url 'login' %}">Login here</a></p>
   </div>
 
   <script>
