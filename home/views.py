@@ -148,6 +148,14 @@ def verify_payment(request):
         })
 
 # ---------- DOCUMENT FLOW ----------
+import re
+
+def clean_text(text):
+    """Remove NULL bytes and non-printable characters."""
+    if not text:
+        return ""
+    text = text.replace("\x00", "")
+    return re.sub(r"[\x00-\x1f\x7f]", "", text)
 @login_required(login_url='login')
 def upload_document(request):
     subscription, _ = Subscription.objects.get_or_create(user=request.user)
@@ -175,12 +183,15 @@ def upload_document(request):
         extracted_text = extract_text_from_file(temp_path)
         os.remove(temp_path)
 
+        # ✅ Clean the extracted text before saving
+        extracted_text = clean_text(extracted_text)
+
         if not extracted_text.strip():
             error = "Could not extract text from the uploaded file."
 
         doc = Document.objects.create(
             extracted_text=extracted_text,
-            job_description=form.cleaned_data.get("job_description", "")
+            job_description=clean_text(form.cleaned_data.get("job_description", ""))
         )
 
         return render(request, "home/text_view.html", {
@@ -196,6 +207,7 @@ def upload_document(request):
         "subscription_active": subscription.is_valid(),
         "error": error
     })
+
 
 @login_required
 def score_cv(request, doc_id):
@@ -291,6 +303,7 @@ def score_cv(request, doc_id):
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
