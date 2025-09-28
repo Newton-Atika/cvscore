@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AI CV Analyzer</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: #0a0a0a;
+            color: #eee;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Navbar */
+        nav {
+            background-color: #111;
+            padding: 15px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid limegreen;
+        }
+
+        nav .logo {
+            color: limegreen;
+            font-size: 1.5rem;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        nav ul {
+            list-style: none;
+            display: flex;
+            gap: 20px;
+        }
+
+        nav ul li {
+            display: inline;
+        }
+
+        nav ul li a {
+            color: #eee;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        nav ul li a:hover {
+            color: limegreen;
+        }
+
+        /* Hero Section */
+        .hero {
+            text-align: center;
+            padding: 80px 20px;
+            background: linear-gradient(135deg, #0a0a0a, #111);
+            border-bottom: 2px solid limegreen;
+        }
+
+        .hero h1 {
+            color: limegreen;
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+        }
+
+        .hero p {
+            font-size: 1.2rem;
+            color: #ccc;
+            max-width: 700px;
+            margin: 0 auto 30px auto;
+        }
+
+        .hero a {
+            display: inline-block;
+            background-color: limegreen;
+            color: #111;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-weight: bold;
+            text-decoration: none;
+            transition: 0.3s;
+        }
+
+        .hero a:hover {
+            background-color: #fff;
+            color: #000;
+        }
+
+        /* Criteria Section */
+        .criteria {
+            padding: 60px 20px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .criteria h2 {
+            color: limegreen;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .criteria ul {
+            list-style: none;
+            padding: 0;
+            line-height: 1.8rem;
+        }
+
+        .criteria ul li::before {
+            content: "✔ ";
+            color: limegreen;
+            font-weight: bold;
+        }
+
+        /* Benefits Section */
+        .benefits {
+            padding: 60px 20px;
+            background-color: #111;
+        }
+
+        .benefits h2 {
+            color: limegreen;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .benefits-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .benefit-card {
+            background: #1a1a1a;
+            border: 1px solid limegreen;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0px 0px 10px #0f0;
+        }
+
+        .benefit-card h3 {
+            color: limegreen;
+            margin-bottom: 10px;
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            margin-top: 40px;
+            border-top: 2px solid limegreen;
+            font-size: 0.9rem;
+            color: #777;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navigation Bar -->
+    <nav>
+        <div class="logo">AI CV Analyzer</div>
+        <ul>
+            <li><a href="{% url 'home' %}">Home</a></li>
+            <li><a href="{% url 'upload_document' %}">Upload CV</a></li>
+            <li><a href="#">Sign Up</a></li>
+            <li><a href="#">Login</a></li>
+        </ul>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <h1>Supercharge Your Job Applications 🚀</h1>
+        <p>Upload your CV and job description, and let our AI analyze your match score, skills, experience, and more. Get clear, actionable insights before applying.</p>
+        <a href="{% url 'upload_document' %}">Upload Your CV Now</a>
+    </section>
+
+    <!-- Criteria Section -->
+    <section class="criteria">
+        <h2>How We Compare Your CV</h2>
+        <ul>
+            <li>Skills Match – We analyze required vs. provided skills.</li>
+            <li>Experience Match – Compare job requirements with your history.</li>
+            <li>Education Check – Ensure education aligns with role needs.</li>
+            <li>Keyword Match – Optimize CV for ATS screening.</li>
+            <li>Referees & Quality – Detect missing referees or incomplete info.</li>
+        </ul>
+    </section>
+
+    <!-- Benefits Section -->
+    <section class="benefits">
+        <h2>Why Use Our Platform?</h2>
+        <div class="benefits-grid">
+            <div class="benefit-card">
+                <h3>Instant Feedback</h3>
+                <p>Get a score and detailed breakdown in seconds.</p>
+            </div>
+            <div class="benefit-card">
+                <h3>ATS-Friendly</h3>
+                <p>Ensure your CV is optimized for Applicant Tracking Systems.</p>
+            </div>
+            <div class="benefit-card">
+                <h3>Highlight Strengths</h3>
+                <p>See which areas of your CV stand out most.</p>
+            </div>
+            <div class="benefit-card">
+                <h3>Identify Gaps</h3>
+                <p>Discover missing skills, keywords, or experience early.</p>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        © 2025 AI CV Analyzer. All Rights Reserved.
+    </footer>
+
+</body>
+</html>
