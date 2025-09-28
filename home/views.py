@@ -243,7 +243,7 @@ def safe_pie_chart(values, labels, colors, title=""):
     buf.seek(0)
     return base64.b64encode(buf.getvalue()).decode("utf-8")
 
-
+@login_required
 def score_cv(request, doc_id):
     user = getattr(request, "user", None)
     if not user or not user.is_authenticated:
@@ -354,6 +354,7 @@ def score_cv(request, doc_id):
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
