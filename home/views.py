@@ -10,6 +10,7 @@ import requests, tempfile, os, json, re, io, base64
 import matplotlib
 import matplotlib.pyplot as plt
 import openai
+from openai import OpenAI
 from .forms import DocumentForm, CustomUserCreationForm
 from .models import Document, Payment, Subscription
 from .utils import extract_text_from_file
@@ -278,7 +279,7 @@ def score_cv(request, doc_id):
     CV:
     {doc.extracted_text}
     """
-from openai import OpenAI
+
     # --- Call OpenAI ---
     try:
         client = OpenAI(api_key=settings.OPENAI_API_KEY)
@@ -357,4 +358,5 @@ from openai import OpenAI
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
