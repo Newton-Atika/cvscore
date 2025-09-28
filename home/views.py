@@ -208,8 +208,6 @@ def upload_document(request):
         "error": error
     })
 
-
-@login_required
 def safe_score(val):
     """Sanitize score (NaN, string, out of bounds)."""
     try:
@@ -245,20 +243,17 @@ def safe_pie_chart(values, labels, colors, title=""):
 
 @login_required
 def score_cv(request, doc_id):
-    user = getattr(request, "user", None)
-    if not user or not user.is_authenticated:
-        return redirect("login")  # redirect if not logged in
+    # --- Subscription checks ---
     subscription, _ = Subscription.objects.get_or_create(user=request.user)
-
     if not subscription.free_trial_used:
         subscription.start_subscription(free=True)
-
     if not subscription.is_valid() or not subscription.deduct_scan():
         return redirect("initiate_payment")
 
+    # --- Get document ---
     doc = get_object_or_404(Document, id=doc_id)
 
-    # --- Prompt ---
+    # --- Prepare AI prompt ---
     prompt = f"""
     Analyze the following CV against the Job Description.
     Output JSON ONLY.
@@ -274,9 +269,13 @@ def score_cv(request, doc_id):
     - missing_education (list)
     - spelling_errors_count (number)
     - incomplete_text_snippets (list)
-    """
 
-    prompt += f"\nJob Description:\n{doc.job_description}\nCV:\n{doc.extracted_text}"
+    Job Description:
+    {doc.job_description}
+
+    CV:
+    {doc.extracted_text}
+    """
 
     # --- Call OpenAI ---
     try:
@@ -298,62 +297,53 @@ def score_cv(request, doc_id):
     except Exception:
         ai_data = json.loads(ai_text)
 
-    ai_data["match_percentage"] = safe_score(ai_data.get("match_percentage", 0))
+    # --- Safe conversions ---
+    ai_data["match_percentage"] = safe_score(ai_data.get("match_percentage"))
 
-    # --- Charts ---
+    # --- Pie charts ---
     skills_chart = safe_pie_chart(
-        [
-            len(ai_data.get("matched_skills", [])),
-            len(ai_data.get("missing_skills", [])),
-        ],
+        [len(ai_data.get("matched_skills", [])), len(ai_data.get("missing_skills", []))],
         ["Matched Skills", "Missing Skills"],
         ["limegreen", "red"],
-        "Skills Analysis",
+        "Skills Analysis"
     )
 
     experience_chart = safe_pie_chart(
-        [
-            len(ai_data.get("matched_keywords", [])),
-            len(ai_data.get("missing_experience", [])),
-        ],
+        [len(ai_data.get("matched_keywords", [])), len(ai_data.get("missing_experience", []))],
         ["Relevant Experience", "Missing Experience"],
         ["limegreen", "orange"],
-        "Work Experience Analysis",
+        "Work Experience Analysis"
     )
 
-    edu_chart = safe_pie_chart(
+    education_chart = safe_pie_chart(
         [0 if ai_data.get("missing_education") else 1, 1 if ai_data.get("missing_education") else 0],
         ["Present", "Missing"],
         ["limegreen", "red"],
-        "Education Analysis",
+        "Education Analysis"
     )
 
     overall_chart = safe_pie_chart(
         [ai_data["match_percentage"], 100 - ai_data["match_percentage"]],
         ["Score Achieved", "Remaining"],
         ["limegreen", "gray"],
-        "Overall CV Match Score",
+        "Overall CV Match Score"
     )
 
-    return render(
-        request,
-        "home/cv_score.html",
-        {
-            "document": doc,
-            "ai_data": ai_data,
-            "skills_chart": skills_chart,
-            "experience_chart": experience_chart,
-            "education_chart": edu_chart,
-            "overall_chart": overall_chart,
-            "scans_left": subscription.scans_remaining,
-            "expires_at": subscription.expires_at,
-        },
-    )
-
+    return render(request, "home/cv_score.html", {
+        "document": doc,
+        "ai_data": ai_data,
+        "skills_chart": skills_chart,
+        "experience_chart": experience_chart,
+        "education_chart": education_chart,
+        "overall_chart": overall_chart,
+        "scans_left": subscription.scans_remaining,
+        "expires_at": subscription.expires_at,
+    })
 @login_required
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
