@@ -209,17 +209,11 @@ def score_cv(request, doc_id):
     if not subscription.is_valid():
         return redirect('initiate_payment')  # redirect to pay
 
-    # Deduct scan
+    # Deduct scan (only once)
     if not subscription.deduct_scan():
         return redirect('initiate_payment')  # no scans left
 
     # Get document
-    doc = get_object_or_404(Document, id=doc_id)
-    """Score CV against job description using AI (with subscription check)"""
-    subscription, _ = Subscription.objects.get_or_create(user=request.user)
-    if not subscription.deduct_scan():
-        return redirect('initiate_payment')
-
     doc = get_object_or_404(Document, id=doc_id)
 
     # Prompt
@@ -241,26 +235,30 @@ def score_cv(request, doc_id):
     """
 
     try:
-        client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
+        from openai import OpenAI
+        client = OpenAI(api_key=settings.OPENAI_API_KEY)
         response = client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-5-nano",
             messages=[{"role": "user", "content": prompt}],
             temperature=0
         )
-        ai_text = response.choices[0].message.content
+        ai_text = response.choices[0].message.content.strip()
     except Exception as e:
         print("OpenAI error:", str(e))
         ai_text = '{"match_percentage":0,"matched_skills":[],"missing_skills":[],"missing_experience":[]}'
 
+    # Parse AI response safely
     try:
         json_str = re.search(r"\{.*\}", ai_text, re.DOTALL).group()
         ai_data = json.loads(json_str)
     except Exception:
         ai_data = {"match_percentage": 0, "matched_skills": [], "missing_skills": [], "missing_experience": []}
 
+    # Ensure match_percentage is an integer
     if isinstance(ai_data.get("match_percentage"), str):
         ai_data["match_percentage"] = int(re.sub(r"[^0-9]", "", ai_data["match_percentage"]) or 0)
 
+    # Chart data
     categories = ["Matched Skills", "Missing Skills", "Missing Experience"]
     values = [
         len(ai_data.get("matched_skills", [])),
@@ -269,10 +267,11 @@ def score_cv(request, doc_id):
     ]
 
     plt.figure(figsize=(6, 4))
-    plt.bar(categories, values, color=["limegreen", "black", "red"])
+    plt.bar(categories, values, color=["limegreen", "orange", "red"])
     plt.title(f"CV vs Job Description Analysis ({ai_data.get('match_percentage', 0)}%)")
     plt.ylabel("Count")
 
+    # Convert plot to base64
     buf = io.BytesIO()
     plt.savefig(buf, format='png')
     plt.close()
@@ -292,6 +291,7 @@ def score_cv(request, doc_id):
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
