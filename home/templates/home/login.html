@@ -3,24 +3,31 @@
 <head>
   <meta charset="UTF-8">
   <title>Login - AI CV Scorer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body { 
       background-color: #000; 
       color: #fff; 
       font-family: 'Segoe UI', Arial, sans-serif; 
-      text-align: center; 
       margin: 0; 
       padding: 0; 
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
     }
 
     /* Navigation */
     nav {
       background: #111;
-      padding: 15px 40px;
+      padding: 15px 20px;
       display: flex;
+      flex-wrap: wrap;
       justify-content: space-between;
       align-items: center;
+      width: 100%;
       border-bottom: 2px solid limegreen;
+      box-sizing: border-box;
     }
     nav .logo {
       color: limegreen;
@@ -28,11 +35,13 @@
       font-weight: bold;
       text-transform: uppercase;
       letter-spacing: 1px;
+      margin-bottom: 10px;
     }
     nav ul {
       list-style: none;
       display: flex;
-      gap: 20px;
+      flex-wrap: wrap;
+      gap: 15px;
       margin: 0;
       padding: 0;
     }
@@ -40,6 +49,7 @@
       color: #fff;
       text-decoration: none;
       font-weight: bold;
+      font-size: 0.95rem;
     }
     nav ul li a:hover {
       color: limegreen;
@@ -49,34 +59,49 @@
     .auth-container { 
       background-color: #111; 
       border: 2px solid limegreen; 
-      padding: 30px; 
+      padding: 25px 20px; 
       border-radius: 12px; 
-      display: inline-block; 
-      width: 350px; 
-      margin-top: 60px;
+      width: 100%;
+      max-width: 400px;
+      margin: 40px 10px;
       box-shadow: 0 0 12px limegreen;
+      box-sizing: border-box;
+    }
+
+    h2 {
+      color: limegreen;
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      text-align: left;
+      margin: 10px 0 5px;
+      font-size: 0.95rem;
     }
 
     input { 
       width: 100%; 
       padding: 12px; 
-      margin: 10px 0; 
+      margin: 5px 0 15px 0; 
       border-radius: 5px; 
       border: 1px solid limegreen; 
       background: #222; 
       color: #fff; 
+      font-size: 1rem;
+      box-sizing: border-box;
     }
 
     button { 
-      padding: 12px 25px; 
+      padding: 12px; 
       background: limegreen; 
       border: none; 
       color: #000; 
       font-weight: bold; 
       border-radius: 6px; 
       cursor: pointer; 
-      margin-top: 10px; 
       width: 100%;
+      font-size: 1rem;
       transition: all 0.3s ease-in-out;
     }
     button:hover { 
@@ -93,6 +118,31 @@
       cursor: pointer; 
       color: limegreen; 
       margin-left: 5px;
+      display: inline-block;
+      margin-bottom: 15px;
+    }
+
+    @media (max-width: 480px) {
+      nav {
+        padding: 10px 15px;
+      }
+      nav .logo {
+        font-size: 1.3rem;
+        margin-bottom: 5px;
+      }
+      nav ul li a {
+        font-size: 0.9rem;
+      }
+      .auth-container {
+        padding: 20px 15px;
+        margin: 30px 10px;
+      }
+      input, button {
+        font-size: 0.95rem;
+      }
+      label {
+        font-size: 0.9rem;
+      }
     }
   </style>
 </head>
