@@ -199,7 +199,7 @@ def upload_document(request):
 
 @login_required
 def score_cv(request, doc_id):
-   subscription, _ = Subscription.objects.get_or_create(user=request.user)
+    subscription, _ = Subscription.objects.get_or_create(user=request.user)
 
     # First scan free: start subscription if never used
     if not subscription.free_trial_used:
@@ -292,6 +292,7 @@ def score_cv(request, doc_id):
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
