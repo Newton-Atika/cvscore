@@ -245,6 +245,9 @@ def safe_pie_chart(values, labels, colors, title=""):
 
 
 def score_cv(request, doc_id):
+    user = getattr(request, "user", None)
+    if not user or not user.is_authenticated:
+        return redirect("login")  # redirect if not logged in
     subscription, _ = Subscription.objects.get_or_create(user=request.user)
 
     if not subscription.free_trial_used:
@@ -351,6 +354,7 @@ def score_cv(request, doc_id):
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
