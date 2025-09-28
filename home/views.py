@@ -278,7 +278,7 @@ def score_cv(request, doc_id):
     CV:
     {doc.extracted_text}
     """
-
+from openai import OpenAI
     # --- Call OpenAI ---
     try:
         client = OpenAI(api_key=settings.OPENAI_API_KEY)
@@ -357,3 +357,4 @@ def score_cv(request, doc_id):
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
