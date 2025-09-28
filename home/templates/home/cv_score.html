@@ -1,202 +1,241 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8">
-    <title>CV Score</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Arial, sans-serif;
-            background-color: #0a0a0a;
-            color: #eee;
-            padding: 40px;
-        }
+  <meta charset="UTF-8">
+  <title>CV Score</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background-color: #0a0a0a;
+      color: #eee;
+      margin: 0;
+      padding: 20px;
+    }
 
-        h1 {
-            text-align: center;
-            color: limegreen;
-            margin-bottom: 40px;
-            font-size: 2.5rem;
-            letter-spacing: 2px;
-        }
+    h1 {
+      text-align: center;
+      color: limegreen;
+      margin-bottom: 40px;
+      font-size: clamp(1.8rem, 4vw, 2.5rem);
+      letter-spacing: 2px;
+    }
 
-        h2 {
-            color: #fff;
-            border-bottom: 2px solid limegreen;
-            padding-bottom: 5px;
-            margin: 30px 0 15px 0;
-        }
+    h2 {
+      color: #fff;
+      border-bottom: 2px solid limegreen;
+      padding-bottom: 5px;
+      margin: 30px 0 15px 0;
+      font-size: clamp(1.2rem, 2.5vw, 1.6rem);
+    }
 
-        h3 {
-            color: limegreen;
-            margin: 15px 0 10px 0;
-        }
+    h3 {
+      color: limegreen;
+      margin: 15px 0 10px 0;
+      font-size: clamp(1rem, 2vw, 1.3rem);
+    }
 
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 30px;
-        }
+    /* Responsive Grid */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 25px;
+    }
 
-        .card {
-            background: #111;
-            border: 2px solid limegreen;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0px 0px 10px #0f0;
-        }
+    .card {
+      background: #111;
+      border: 2px solid limegreen;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0px 0px 10px rgba(0, 255, 0, 0.6);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
 
-        ul {
-            list-style: none;
-            padding-left: 0;
-            margin: 10px 0;
-            max-height: 180px;
-            overflow-y: auto;
-            border: 1px solid #333;
-            border-radius: 8px;
-            padding: 10px;
-            background-color: #1a1a1a;
-        }
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0px 0px 18px rgba(0, 255, 0, 0.9);
+    }
 
-        ul li {
-            margin: 5px 0;
-        }
+    ul {
+      list-style: none;
+      padding-left: 0;
+      margin: 10px 0;
+      max-height: 180px;
+      overflow-y: auto;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 10px;
+      background-color: #1a1a1a;
+    }
 
-        img.chart {
-            margin-top: 15px;
-            max-width: 100%;
-            border: 2px solid limegreen;
-            border-radius: 8px;
-            background: #000;
-        }
+    ul li {
+      margin: 5px 0;
+      font-size: 0.95rem;
+    }
 
-        .status {
-            font-weight: bold;
-            color: limegreen;
-        }
+    img.chart {
+      margin-top: 15px;
+      max-width: 100%;
+      height: auto;
+      border: 2px solid limegreen;
+      border-radius: 8px;
+      background: #000;
+    }
 
-        .status.missing {
-            color: red;
-        }
+    .status {
+      font-weight: bold;
+      color: limegreen;
+    }
 
-        a.upload-link {
-            color: limegreen;
-            text-decoration: none;
-            display: block;
-            text-align: center;
-            margin-top: 40px;
-            font-size: 1.2rem;
-            font-weight: bold;
-        }
+    .status.missing {
+      color: red;
+    }
 
-        a.upload-link:hover {
-            color: #fff;
-        }
-    </style>
+    a.upload-link {
+      color: limegreen;
+      text-decoration: none;
+      display: block;
+      text-align: center;
+      margin: 40px auto;
+      font-size: 1.1rem;
+      font-weight: bold;
+      border: 2px solid limegreen;
+      padding: 12px 20px;
+      border-radius: 8px;
+      width: fit-content;
+      transition: all 0.3s ease;
+    }
+
+    a.upload-link:hover {
+      color: #000;
+      background: limegreen;
+    }
+
+    /* Mobile Tweaks */
+    @media (max-width: 600px) {
+      body {
+        padding: 15px;
+      }
+
+      h1 {
+        font-size: 1.8rem;
+        margin-bottom: 25px;
+      }
+
+      .grid {
+        gap: 15px;
+      }
+
+      .card {
+        padding: 15px;
+      }
+    }
+  </style>
 </head>
 <body>
-    <h1>CV Analysis Dashboard</h1>
+  <h1>CV Analysis Dashboard</h1>
 
-    <div class="grid">
-        <!-- Overall Score -->
-        <div class="card">
-            <h2>Overall Match Score</h2>
-            <p style="font-size: 1.5rem;">{{ ai_data.match_percentage }}%</p>
-            <img class="chart" src="data:image/png;base64,{{ overall_chart }}" alt="Overall Match Score"/>
-        </div>
-
-        <!-- Skills -->
-        <div class="card">
-            <h2>Skills Analysis</h2>
-            <img class="chart" src="data:image/png;base64,{{ skills_chart }}" alt="Skills Chart"/>
-            <h3>Matched Skills</h3>
-            <ul>
-                {% for skill in ai_data.matched_skills %}
-                    <li>{{ skill }}</li>
-                {% empty %}
-                    <li>None</li>
-                {% endfor %}
-            </ul>
-            <h3>Missing Skills</h3>
-            <ul>
-                {% for skill in ai_data.missing_skills %}
-                    <li>{{ skill }}</li>
-                {% empty %}
-                    <li>None</li>
-                {% endfor %}
-            </ul>
-        </div>
-
-        <!-- Experience -->
-        <div class="card">
-            <h2>Work Experience</h2>
-            <img class="chart" src="data:image/png;base64,{{ experience_chart }}" alt="Experience Chart"/>
-            <h3>Missing Experience</h3>
-            <ul>
-                {% for exp in ai_data.missing_experience %}
-                    <li>{{ exp }}</li>
-                {% empty %}
-                    <li>None</li>
-                {% endfor %}
-            </ul>
-        </div>
-
-        <!-- Education -->
-        <div class="card">
-            <h2>Education Check</h2>
-            <img class="chart" src="data:image/png;base64,{{ education_chart }}" alt="Education Chart"/>
-            {% if ai_data.missing_education %}
-                <p class="status missing">Missing Education Info!</p>
-            {% else %}
-                <p class="status">Education Present</p>
-            {% endif %}
-        </div>
-
-        <!-- Keywords -->
-        <div class="card">
-            <h2>Keywords Analysis</h2>
-            <h3>Matched Keywords</h3>
-            <ul>
-                {% for kw in ai_data.matched_keywords %}
-                    <li>{{ kw }}</li>
-                {% empty %}
-                    <li>None</li>
-                {% endfor %}
-            </ul>
-            <h3>Missing Keywords</h3>
-            <ul>
-                {% for kw in ai_data.missing_keywords %}
-                    <li>{{ kw }}</li>
-                {% empty %}
-                    <li>None</li>
-                {% endfor %}
-            </ul>
-        </div>
-
-        <!-- Referees -->
-        <div class="card">
-            <h2>Referees</h2>
-            {% if ai_data.missing_referees %}
-                <p class="status missing">No Referees Found!</p>
-            {% else %}
-                <p class="status">Referees Present</p>
-            {% endif %}
-        </div>
-
-        <!-- Spelling & Incomplete -->
-        <div class="card">
-            <h2>Quality Check</h2>
-            <p><strong>Spelling Errors:</strong> {{ ai_data.spelling_errors_count }}</p>
-            <h3>Incomplete Text</h3>
-            <ul>
-                {% for txt in ai_data.incomplete_text_snippets %}
-                    <li>{{ txt }}</li>
-                {% empty %}
-                    <li>None</li>
-                {% endfor %}
-            </ul>
-        </div>
+  <div class="grid">
+    <!-- Overall Score -->
+    <div class="card">
+      <h2>Overall Match Score</h2>
+      <p style="font-size: 1.4rem;">{{ ai_data.match_percentage }}%</p>
+      <img class="chart" src="data:image/png;base64,{{ overall_chart }}" alt="Overall Match Score"/>
     </div>
 
-    <a href="{% url 'upload_document' %}" class="upload-link">⬆ Upload Another CV</a>
+    <!-- Skills -->
+    <div class="card">
+      <h2>Skills Analysis</h2>
+      <img class="chart" src="data:image/png;base64,{{ skills_chart }}" alt="Skills Chart"/>
+      <h3>Matched Skills</h3>
+      <ul>
+        {% for skill in ai_data.matched_skills %}
+          <li>{{ skill }}</li>
+        {% empty %}
+          <li>None</li>
+        {% endfor %}
+      </ul>
+      <h3>Missing Skills</h3>
+      <ul>
+        {% for skill in ai_data.missing_skills %}
+          <li>{{ skill }}</li>
+        {% empty %}
+          <li>None</li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <!-- Experience -->
+    <div class="card">
+      <h2>Work Experience</h2>
+      <img class="chart" src="data:image/png;base64,{{ experience_chart }}" alt="Experience Chart"/>
+      <h3>Missing Experience</h3>
+      <ul>
+        {% for exp in ai_data.missing_experience %}
+          <li>{{ exp }}</li>
+        {% empty %}
+          <li>None</li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <!-- Education -->
+    <div class="card">
+      <h2>Education Check</h2>
+      <img class="chart" src="data:image/png;base64,{{ education_chart }}" alt="Education Chart"/>
+      {% if ai_data.missing_education %}
+        <p class="status missing">Missing Education Info!</p>
+      {% else %}
+        <p class="status">Education Present</p>
+      {% endif %}
+    </div>
+
+    <!-- Keywords -->
+    <div class="card">
+      <h2>Keywords Analysis</h2>
+      <h3>Matched Keywords</h3>
+      <ul>
+        {% for kw in ai_data.matched_keywords %}
+          <li>{{ kw }}</li>
+        {% empty %}
+          <li>None</li>
+        {% endfor %}
+      </ul>
+      <h3>Missing Keywords</h3>
+      <ul>
+        {% for kw in ai_data.missing_keywords %}
+          <li>{{ kw }}</li>
+        {% empty %}
+          <li>None</li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <!-- Referees -->
+    <div class="card">
+      <h2>Referees</h2>
+      {% if ai_data.missing_referees %}
+        <p class="status missing">No Referees Found!</p>
+      {% else %}
+        <p class="status">Referees Present</p>
+      {% endif %}
+    </div>
+
+    <!-- Spelling & Incomplete -->
+    <div class="card">
+      <h2>Quality Check</h2>
+      <p><strong>Spelling Errors:</strong> {{ ai_data.spelling_errors_count }}</p>
+      <h3>Incomplete Text</h3>
+      <ul>
+        {% for txt in ai_data.incomplete_text_snippets %}
+          <li>{{ txt }}</li>
+        {% empty %}
+          <li>None</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+
+  <a href="{% url 'upload_document' %}" class="upload-link">⬆ Upload Another CV</a>
 </body>
 </html>
