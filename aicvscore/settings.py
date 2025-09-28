@@ -137,13 +137,13 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-PAYSTACK_SECRET_KEY = "sk_test_d50b2d43213a91922470eee1eea7fee305c3beff"
-
+PAYSTACK_SECRET_KEY = os.environ.get('PAYSTACK_SECRET_KEY')
 CSRF_TRUSTED_ORIGINS = [
     "https://cvscore-production.up.railway.app",
 ]
 
 OPENAI_API_KEY=os.environ.get('OPENAI_API_KEY')
+
 
 
 
