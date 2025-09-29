@@ -65,6 +65,13 @@
       color: limegreen; 
     }
 
+    .button.disabled {
+      background-color: #555;
+      color: #999;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
     a.upload-link {
       color: limegreen; 
       text-decoration: none;
@@ -94,7 +101,12 @@
   <div class="text-area">{{ job_description }}</div>
 
   <!-- Score CV Button -->
-  <a href="{% url 'score_cv' document.id %}" class="button">Score My CV</a>
+  {% if extracted_text and job_description %}
+    <a href="{% url 'score_cv' document.id %}" class="button">Score My CV</a>
+  {% else %}
+    <a class="button disabled">Score My CV</a>
+    <p style="color: red; margin-top: 10px;">⚠️ Please upload a CV and provide a Job Description first.</p>
+  {% endif %}
 
   <p>
     <a href="{% url 'upload_document' %}" class="upload-link">Upload another CV</a>
