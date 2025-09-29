@@ -160,6 +160,14 @@ def clean_text(text):
     return re.sub(r"[\x00-\x1f\x7f]", "", text)
 @login_required(login_url='login')
 def upload_document(request):
+    # ✅ Get or create subscription for logged-in user
+    subscription, _ = Subscription.objects.get_or_create(user=request.user)
+
+    # Calculate subscription status
+    subscription_active = subscription.is_valid()
+    days_left = (subscription.expires_at - timezone.now()).days if subscription.expires_at else 0
+    scans_left = subscription.scans_remaining
+
     form = DocumentForm(request.POST or None, request.FILES or None)
     error = None
 
@@ -191,7 +199,11 @@ def upload_document(request):
 
     return render(request, "home/upload.html", {
         "form": form,
-        "error": error
+        "error": error,
+        # ✅ Pass subscription details to the template
+        "subscription_active": subscription_active,
+        "days_left": days_left,
+        "scans_left": scans_left,
     })
 def safe_score(val):
     """Sanitize score (NaN, string, out of bounds)."""
@@ -342,6 +354,7 @@ def score_cv(request, doc_id):
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
