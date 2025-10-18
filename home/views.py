@@ -264,7 +264,7 @@ Use this weighted formula to calculate match_percentage:
 - Education Match = 5%
 - Professional Completion (spelling, referees, completeness, structure) = 10%
 
-For any CV, extract all:
+For any CV, extract all exact:
 - hard & soft skills from job description and compare against extracted hard and soft skills from the CV
 - measurable responsibilities from the job description and compare with extracted work experience from the CV for
 - critical keywords (e.g., "milestones", "SOW", "tracking", "risk escalation", etc.) from the job description to compare with those in CV
@@ -384,6 +384,7 @@ CV:
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
