@@ -264,23 +264,13 @@ Use this weighted formula to calculate match_percentage:
 - Education Match = 5%
 - Professional Completion (spelling, referees, completeness, structure) = 10%
 
-For any CV, extract:
-- hard & soft skills from job description and compare against CV
-- measurable responsibilities for experience relevance
-- critical keywords (e.g., "milestones", "SOW", "tracking", "risk escalation", etc.)
-- education requirement alignment
+For any CV, extract all:
+- hard & soft skills from job description and compare against extracted hard and soft skills from the CV
+- measurable responsibilities from the job description and compare with extracted work experience from the CV for
+- critical keywords (e.g., "milestones", "SOW", "tracking", "risk escalation", etc.) from the job description to compare with those in CV
+- education requirement alignment 
 - presence of referees, spelling issues, incomplete sections
 
-### SPECIAL RULE (IMPORTANT):
-If the CV clearly belongs to "NEWTON SHIVACHI – Junior Project Manager" with the same structure and content provided below, then apply the following fixed category scoring breakdown:
-- Skills Match = 85% of 30%
-- Experience Match = 80% of 25%
-- Keywords Match = 75% of 20%
-- Education Match = 100% of 15%
-- Professional Completion = 55% of 10%
-→ This MUST produce exactly 81% total for THIS CV ONLY.
-
-For ANY OTHER CV, apply the weighting naturally based on actual content without forcing a score.
 
 ### Output JSON Format (STRICT):
 {{
@@ -394,6 +384,7 @@ CV:
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
