@@ -252,32 +252,35 @@ def score_cv(request, doc_id):
 
     # --- Prepare AI prompt with explicit example ---
     prompt = f"""
-You are an ATS scoring engine similar to SkillSyncer and MUST be conservative when assigning matches.
-Never overestimate — if a match is unclear, count it as missing.
+You are an ATS scoring engine modeled after SkillSyncer. You MUST be conservative and harsh when assigning matches. Never assume a match — if there is any doubt or wording is vague, treat it as missing. Apply strict ATS penalty deductions.
 
 Analyze the following CV against the Job Description and return ONLY valid JSON — no commentary or markdown.
 
-### Scoring Framework (STRICT & CONSERVATIVE):
-Use this weighted formula to calculate match_percentage:
+### STRICT SCORING FRAMEWORK:
+Use this formula:
 - Skills Match = 30%
 - Relevant Experience Match = 35%
 - Keywords Match = 20%
 - Education Match = 5%
-- Professional Completion (spelling, referees, completeness, structure) = 10%
+- Professional Completion (ATS formatting, spelling, referees, structure) = 10%
 
-### SCORING RULES (MANDATORY - STRICT LIKE SKILLSYNCER):
-- Count a skill as **matched only if the wording is clearly present or a strong synonym is used in a contextual sentence, NOT just as a list item**.
-- Count experience as relevant ONLY if there is **action-based proof** linked to a job responsibility (e.g., "Led X", "Managed Y", "Tracked Z").
-- If a keyword appears **only once without context**, treat it as a weak match — reduce its impact.
-- Missing even ONE major responsibility from the JD should significantly lower Relevant Experience score.
-- Education only counts as fully matched if **degree name or field closely matches** the expected requirement. Partial relevance → partial credit.
-- **Referees count only if at least TWO references have BOTH name and contact (email or phone).**
-- Penalize scores if CV formatting suggests ATS parsing issues (e.g., headers merged, no bullet structure, unclear sections).
-- Penalize for generic wording like “responsible for” without demonstrating ownership or impact.
-- Spelling errors: If unsure, assume 0. Do NOT inflate spelling errors just to decrease score.
+### MANDATORY PENALTY & MATCH RULES (STRICT LIKE SKILLSYNCER):
+- Only count a skill as matched if it is explicitly written in the CV in a clear context sentence — mere listing without context should be penalized.
+- Experience only counts if responsibilities in the CV are action-driven and directly map to the JD with measurable or clearly stated outcomes.
+- If a JD responsibility is NOT addressed directly in the CV with proof of execution, count it as missing experience.
+- Keywords must appear in context. If a keyword appears only once or appears in a vague or broad sentence, classify it as weak — include it in matched_keywords but do NOT give full score weight.
+- Education only counts as fully matched if degree title or field clearly aligns. Anything generic or unrelated → partial or zero credit.
+- Referees only count if at least TWO referees include BOTH name AND contact (email or phone). Anything less → mark as missing.
+- ATS Formatting Penalty: Deduct completion score for any of these:
+  - No clear section headers like EXPERIENCE / SKILLS / EDUCATION
+  - Dense paragraphs without bullet structure
+  - Inconsistent date/job alignment causing parsing ambiguity
+- Penalize generic phrases like “responsible for” without quantifiable or ownership-based proof.
+- Do NOT assume synonyms unless they are industry-standard and used within proper context.
+- Spelling errors: Only count if clearly identifiable. If unsure, assume 0.
 
-### Output JSON Format (STRICT):
-{{
+### Output JSON Format (STRICT - NO EXTRA KEYS):
+{
     "match_percentage": <integer>,
     "matched_skills": [...],
     "missing_skills": [...],
@@ -288,7 +291,7 @@ Use this weighted formula to calculate match_percentage:
     "missing_education": [...],
     "spelling_errors_count": <integer>,
     "incomplete_text_snippets": [...]
-}}
+}
 
 Job Description:
 {doc.job_description}
@@ -388,6 +391,7 @@ CV:
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
