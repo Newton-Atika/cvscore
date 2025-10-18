@@ -238,6 +238,55 @@ def safe_pie_chart(values, labels, colors, title=""):
     buf.seek(0)
     return base64.b64encode(buf.getvalue()).decode("utf-8")
 
+def calculate_weighted_score(data):
+    """
+    Calculate a weighted ATS-style score that sums to 100.
+    - Skills & Tools (hard + tools) => 60
+    - Soft skills => 20
+    - Relevant experience => 10
+    - Education relevance => 5
+    - ATS formatting compliance => 5
+    """
+    # Extract values with safe defaults
+    hard_matched = data.get("hard_skills_matched", 0)
+    hard_missing = data.get("hard_skills_missing", 0)
+    soft_matched = data.get("soft_skills_matched", 0)
+    soft_missing = data.get("soft_skills_missing", 0)
+    tools_matched = data.get("tools_matched", 0)
+    tools_missing = data.get("tools_missing", 0)
+    exp_matched = data.get("experience_matched", 0)
+    exp_missing = data.get("experience_missing", 0)
+    education_relevant = data.get("education_relevant", False)
+    ats_issues = data.get("ats_formatting_issues", [])
+
+    # Totals (avoid division by zero)
+    skills_matched = hard_matched + tools_matched
+    skills_total = (hard_matched + hard_missing) + (tools_matched + tools_missing)
+
+    soft_total = soft_matched + soft_missing
+    exp_total = exp_matched + exp_missing
+
+    # Weights (sum to 100)
+    SKILLS_WEIGHT = 60.0
+    SOFT_WEIGHT = 20.0
+    EXP_WEIGHT = 10.0
+    EDU_WEIGHT = 5.0
+    ATS_WEIGHT = 5.0
+
+    # Compute sub-scores
+    skills_score = (skills_matched / skills_total) * SKILLS_WEIGHT if skills_total else 0
+    soft_score = (soft_matched / soft_total) * SOFT_WEIGHT if soft_total else 0
+    exp_score = (exp_matched / exp_total) * EXP_WEIGHT if exp_total else 0
+    edu_score = EDU_WEIGHT if education_relevant else 0
+
+    # ATS formatting: map number of issues to a score out of ATS_WEIGHT
+    # We'll deduct 1 point (of the ATS_WEIGHT) per issue up to the ATS_WEIGHT.
+    ats_issue_count = len(ats_issues) if ats_issues is not None else 0
+    ats_score = max(0.0, ATS_WEIGHT - min(ats_issue_count, int(ATS_WEIGHT)))
+
+    final = skills_score + soft_score + exp_score + edu_score + ats_score
+    return safe_score(final)
+
 @login_required
 def score_cv(request, doc_id):
     # --- Subscription checks ---
@@ -250,24 +299,50 @@ def score_cv(request, doc_id):
     # --- Get document ---
     doc = get_object_or_404(Document, id=doc_id)
 
-    # --- Prepare AI prompt with explicit example ---
+    # --- Enhanced Prompt ---
     prompt = f"""
-    Analyze the following CV against the Job Description.
-    Output JSON ONLY, strictly following this format:
+    You are an ATS (Applicant Tracking System) with advanced semantic understanding, similar to SkillSyncer and Jobscan but more precise. Analyze the CV and Job Description not only for direct keyword matches but also for SEMANTICALLY RELATED SKILLS AND EXPERIENCE (example: "data visualization" ≈ "Tableau" ≈ "Power BI").
 
-    Example:
+    🔍 SYSTEM INSTRUCTIONS — STRICTLY FOLLOW:
+    1. Return ONLY valid JSON — no commentary.
+    2. Treat the Job Description as the gold standard.
+    3. Extract HARD SKILLS (technical), SOFT SKILLS (communication, leadership), and TOOLS/TECHNOLOGIES separately.
+    4. Detect **synonyms and equivalent terminology** (e.g., "stakeholder engagement" ≈ "cross-functional communication").
+    5. Give weighted scoring:
+       - 60% → Skills and tools match
+       - 20% → Relevant achievements and quantified impact in experience
+       - 10% → Education relevance
+       - 10% → ATS compliance issues (tables, icons, multiple columns, missing section titles)
+    6. Identify **active verbs** (Led, Built, Analyzed) vs weak verbs (Assisted, Helped).
+    7. Highlight any **non-ATS-friendly patterns**: tables, icons, multiple columns, headers like "Professional Journey" instead of "Experience".
+
     {{
-        "match_percentage": 85,
-        "matched_skills": ["Procurement planning", "Contract management"],
-        "missing_skills": ["Negotiation"],
-        "matched_keywords": ["Procurement software", "Asset Disposal Act"],
-        "missing_keywords": ["SAP"],
-        "missing_experience": ["Experience in strategic sourcing"],
-        "missing_referees": ["Referee contact missing"],
-        "missing_education": [],
-        "spelling_errors_count": 2,
-        "incomplete_text_snippets": ["[school went]"]
+      "hard_skills_matched": number,
+      "hard_skills_missing": number,
+      "soft_skills_matched": number,
+      "soft_skills_missing": number,
+      "tools_matched": number,
+      "tools_missing": number,
+      "experience_matched": number,
+      "experience_missing": number,
+      "education_relevant": true/false,
+      "ats_formatting_issues": ["description 1", "description 2"],
+      "matched_skills": [],
+      "missing_skills": [],
+      "matched_keywords": [],
+      "missing_keywords": [],
+      "missing_experience": [],
+      "missing_referees": [],
+      "missing_education": [],
+      "spelling_errors_count": number,
+      "incomplete_text_snippets": []
     }}
+
+    Detect NON-ATS formatting issues such as:
+    - Tables, icons, bullet symbols like ● ► ✓ ◆
+    - Multiple-column layout (|, excessive spacing)
+    - Unrecognized section headings (only accept: Experience, Education, Skills, Projects, Summary)
+    - Slashes in contact info format (e.g. Phone / Email / LinkedIn)
 
     Job Description:
     {doc.job_description}
@@ -282,7 +357,7 @@ def score_cv(request, doc_id):
         response = client.chat.completions.create(
             model="gpt-5-nano",
             messages=[{"role": "user", "content": prompt}],
-            temperature=1,
+            temperature=0.5,
         )
         ai_text = response.choices[0].message.content.strip()
     except Exception as e:
@@ -297,18 +372,32 @@ def score_cv(request, doc_id):
         ai_data = {}
 
     # --- Safe defaults ---
-    ai_data.setdefault("match_percentage", 0)
-    ai_data.setdefault("matched_skills", [])
-    ai_data.setdefault("missing_skills", [])
-    ai_data.setdefault("matched_keywords", [])
-    ai_data.setdefault("missing_keywords", [])
-    ai_data.setdefault("missing_experience", [])
-    ai_data.setdefault("missing_referees", [])
-    ai_data.setdefault("missing_education", [])
-    ai_data.setdefault("spelling_errors_count", 0)
-    ai_data.setdefault("incomplete_text_snippets", [])
+    fields_defaults = {
+        "hard_skills_matched": 0,
+        "hard_skills_missing": 0,
+        "soft_skills_matched": 0,
+        "soft_skills_missing": 0,
+        "tools_matched": 0,
+        "tools_missing": 0,
+        "experience_matched": 0,
+        "experience_missing": 0,
+        "education_relevant": False,
+        "ats_formatting_issues": [],
+        "matched_skills": [],
+        "missing_skills": [],
+        "matched_keywords": [],
+        "missing_keywords": [],
+        "missing_experience": [],
+        "missing_referees": [],
+        "missing_education": [],
+        "spelling_errors_count": 0,
+        "incomplete_text_snippets": []
+    }
+    for k, v in fields_defaults.items():
+        ai_data.setdefault(k, v)
 
-    ai_data["match_percentage"] = safe_score(ai_data["match_percentage"])
+    # --- Final score calculation (Overriding AI score with your ATS logic) ---
+    ai_data["match_percentage"] = calculate_weighted_score(ai_data)
 
     # --- Pie charts ---
     skills_chart = safe_pie_chart(
@@ -349,11 +438,13 @@ def score_cv(request, doc_id):
         "scans_left": subscription.scans_remaining,
         "expires_at": subscription.expires_at,
     })
+
     
 @login_required
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
