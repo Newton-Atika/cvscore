@@ -252,35 +252,22 @@ def score_cv(request, doc_id):
 
     # --- Prepare AI prompt with explicit example ---
     prompt = f"""
-    You are an ATS evaluation engine similar to SkillSyncer, ResumeWorded, and Jobscan combined.
-    You must analyze the CV strictly against the Job Description with relevance scoring logic like ATS.
+    Analyze the following CV against the Job Description.
+    Output JSON ONLY, strictly following this format:
 
-    ⚠ RULES:
-    - Output ONLY valid JSON. Do not include explanations or comments.
-    - Do NOT repeat the same skill or keyword twice. Deduplicate automatically.
-    - Consider context — only count a skill/keyword as matched if it is used in a relevant professional context.
-    - Penalize vague mentions or unrelated keyword stuffing.
-    - Experience should match by responsibility relevance, not just word appearance.
-    - If referees or reference contact details are missing, treat as missing.
-    - "missing_education" should include expected qualifications that do not appear clearly.
-    - Identify incomplete sentences or sections (like cut-off phrases or unfinished bullet points).
-    - If no issue is found in a category, return an empty list for that category.
-
-    🎯 OUTPUT FORMAT (strict JSON):
+    Example:
     {{
-        "match_percentage": 0-100 (integer only, no decimals),
-        "matched_skills": ["..."],
-        "missing_skills": ["..."],
-        "matched_keywords": ["..."],
-        "missing_keywords": ["..."],
-        "missing_experience": ["..."],
-        "missing_referees": ["Referee contact missing" or empty array],
-        "missing_education": ["..."],
-        "spelling_errors_count": number,
-        "incomplete_text_snippets": ["..."]
+        "match_percentage": 85,
+        "matched_skills": ["Procurement planning", "Contract management"],
+        "missing_skills": ["Negotiation"],
+        "matched_keywords": ["Procurement software", "Asset Disposal Act"],
+        "missing_keywords": ["SAP"],
+        "missing_experience": ["Experience in strategic sourcing"],
+        "missing_referees": ["Referee contact missing"],
+        "missing_education": [],
+        "spelling_errors_count": 2,
+        "incomplete_text_snippets": ["[school went]"]
     }}
-
-    Now evaluate based ONLY on the content.
 
     Job Description:
     {doc.job_description}
@@ -296,7 +283,6 @@ def score_cv(request, doc_id):
             model="gpt-5-nano",
             messages=[{"role": "user", "content": prompt}],
             temperature=1,
-            timeout=20 
         )
         ai_text = response.choices[0].message.content.strip()
     except Exception as e:
@@ -368,5 +354,3 @@ def score_cv(request, doc_id):
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
-
-
