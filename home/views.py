@@ -280,7 +280,7 @@ Use this formula:
 - Spelling errors: Only count if clearly identifiable. If unsure, assume 0.
 
 ### Output JSON Format (STRICT - NO EXTRA KEYS):
-{
+{{
     "match_percentage": <integer>,
     "matched_skills": [...],
     "missing_skills": [...],
@@ -291,7 +291,7 @@ Use this formula:
     "missing_education": [...],
     "spelling_errors_count": <integer>,
     "incomplete_text_snippets": [...]
-}
+}}
 
 Job Description:
 {doc.job_description}
@@ -299,6 +299,7 @@ Job Description:
 CV:
 {doc.extracted_text}
 """
+
 
 
 
@@ -391,6 +392,7 @@ CV:
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
