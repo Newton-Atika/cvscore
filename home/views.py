@@ -287,6 +287,60 @@ def calculate_weighted_score(data):
     final = skills_score + soft_score + exp_score + edu_score + ats_score
     return safe_score(final)
 
+import json
+import re
+import logging
+
+logger = logging.getLogger(__name__)
+
+def _int_safe(v):
+    try:
+        if isinstance(v, (int, float)):
+            return int(v)
+        if isinstance(v, str):
+            s = re.sub(r"[^0-9\-]", "", v)
+            return int(s) if s not in ("", "-") else 0
+        return int(v)
+    except Exception:
+        return 0
+
+def _bool_safe(v):
+    if isinstance(v, bool):
+        return v
+    if isinstance(v, str):
+        return v.strip().lower() in ("true", "yes", "1")
+    return bool(v)
+
+def _list_safe(v):
+    # Normalizes lists returned as lists or CSV/newline strings
+    if v is None:
+        return []
+    if isinstance(v, list):
+        return [str(x).strip() for x in v if str(x).strip()]
+    if isinstance(v, (int, float)):
+        return []
+    if isinstance(v, str):
+        text = v.strip()
+        if not text:
+            return []
+        # try JSON array
+        try:
+            parsed = json.loads(text)
+            if isinstance(parsed, list):
+                return [str(x).strip() for x in parsed if str(x).strip()]
+        except Exception:
+            pass
+        # fallback split by newline or comma or semicolon
+        if "\n" in text:
+            parts = [p.strip() for p in text.splitlines() if p.strip()]
+            if parts:
+                return parts
+        # comma separated
+        parts = [p.strip() for p in re.split(r",|;", text) if p.strip()]
+        if parts:
+            return parts
+    return []
+
 @login_required
 def score_cv(request, doc_id):
     # --- Subscription checks ---
@@ -299,107 +353,127 @@ def score_cv(request, doc_id):
     # --- Get document ---
     doc = get_object_or_404(Document, id=doc_id)
 
-    # --- Enhanced Prompt ---
-    prompt = f"""
-    You are an ATS (Applicant Tracking System) with advanced semantic understanding, similar to SkillSyncer and Jobscan but more precise. Analyze the CV and Job Description not only for direct keyword matches but also for SEMANTICALLY RELATED SKILLS AND EXPERIENCE (example: "data visualization" ≈ "Tableau" ≈ "Power BI").
+    # --- Enhanced Prompt (counts + arrays required) ---
+    system_msg = (
+        "You are an ATS extractor. Return ONLY a single JSON object in the response body "
+        "and nothing else. Include numeric counts AND arrays for the items. Arrays must "
+        "be valid JSON arrays or newline/comma separated strings. Example format:\n\n"
+        '{'
+        '"hard_skills_matched": 3, "hard_skills_missing": 2, '
+        '"soft_skills_matched": 2, "soft_skills_missing": 1, '
+        '"tools_matched": 2, "tools_missing": 1, '
+        '"experience_matched": 4, "experience_missing": 2, '
+        '"education_relevant": false, '
+        '"ats_formatting_issues": ["Table detected", "Icons used"], '
+        '"matched_skills": ["Excel", "Power BI"], '
+        '"missing_skills": ["SQL"], '
+        '"matched_keywords": ["reporting", "dashboard"], '
+        '"missing_keywords": ["ETL"], '
+        '"missing_experience": ["No procurement experience"], '
+        '"missing_referees": [], "missing_education": [], '
+        '"spelling_errors_count": 1, '
+        '"incomplete_text_snippets": ["[left school]"]'
+        '}'
+    )
 
-    🔍 SYSTEM INSTRUCTIONS — STRICTLY FOLLOW:
-    1. Return ONLY valid JSON — no commentary.
-    2. Treat the Job Description as the gold standard.
-    3. Extract HARD SKILLS (technical), SOFT SKILLS (communication, leadership), and TOOLS/TECHNOLOGIES separately.
-    4. Detect **synonyms and equivalent terminology** (e.g., "stakeholder engagement" ≈ "cross-functional communication").
-    5. Give weighted scoring:
-       - 60% → Skills and tools match
-       - 20% → Relevant achievements and quantified impact in experience
-       - 10% → Education relevance
-       - 10% → ATS compliance issues (tables, icons, multiple columns, missing section titles)
-    6. Identify **active verbs** (Led, Built, Analyzed) vs weak verbs (Assisted, Helped).
-    7. Highlight any **non-ATS-friendly patterns**: tables, icons, multiple columns, headers like "Professional Journey" instead of "Experience".
+    user_prompt = f"""
+You are an ATS (Applicant Tracking System) analyzer. Analyze the Job Description and CV below.
+Return ONLY a JSON object as described in the system message (no extra explanation).
 
-    {{
-      "hard_skills_matched": number,
-      "hard_skills_missing": number,
-      "soft_skills_matched": number,
-      "soft_skills_missing": number,
-      "tools_matched": number,
-      "tools_missing": number,
-      "experience_matched": number,
-      "experience_missing": number,
-      "education_relevant": true/false,
-      "ats_formatting_issues": ["description 1", "description 2"],
-      "matched_skills": [],
-      "missing_skills": [],
-      "matched_keywords": [],
-      "missing_keywords": [],
-      "missing_experience": [],
-      "missing_referees": [],
-      "missing_education": [],
-      "spelling_errors_count": number,
-      "incomplete_text_snippets": []
-    }}
+Job Description:
+{doc.job_description}
 
-    Detect NON-ATS formatting issues such as:
-    - Tables, icons, bullet symbols like ● ► ✓ ◆
-    - Multiple-column layout (|, excessive spacing)
-    - Unrecognized section headings (only accept: Experience, Education, Skills, Projects, Summary)
-    - Slashes in contact info format (e.g. Phone / Email / LinkedIn)
-
-    Job Description:
-    {doc.job_description}
-
-    CV:
-    {doc.extracted_text}
+CV (extracted text):
+{doc.extracted_text}
     """
 
-    # --- Call OpenAI ---
+    # --- Call OpenAI (deterministic) ---
     try:
         client = OpenAI(api_key=settings.OPENAI_API_KEY)
         response = client.chat.completions.create(
             model="gpt-5-nano",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.5,
+            messages=[
+                {"role": "system", "content": system_msg},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.0,
+            max_tokens=800,
         )
         ai_text = response.choices[0].message.content.strip()
     except Exception as e:
-        print("OpenAI error:", str(e))
-        ai_text = '{}'
+        logger.exception("OpenAI error in score_cv")
+        ai_text = "{}"
 
-    # --- Parse AI JSON safely ---
+    # --- Debug log for development (remove in production) ---
+    logger.debug("AI raw output for score_cv (doc %s): %s", doc_id, ai_text[:4000])
+
+    # --- Parse AI JSON safely (first '{' to last '}' ) ---
+    ai_data = {}
     try:
-        json_str = re.search(r"\{.*\}", ai_text, re.DOTALL).group()
-        ai_data = json.loads(json_str)
+        start = ai_text.find("{")
+        end = ai_text.rfind("}")
+        if start != -1 and end != -1 and end >= start:
+            json_str = ai_text[start:end+1]
+            ai_data = json.loads(json_str)
+        else:
+            ai_data = {}
+    except Exception as e:
+        logger.warning("Failed to parse AI JSON; ai_text=%s", ai_text[:1000])
+        try:
+            # fallback: try to load the whole thing (if it's pure JSON)
+            ai_data = json.loads(ai_text)
+        except Exception:
+            ai_data = {}
+
+    # --- Safe defaults and coercion ---
+    # Lists
+    ai_data["matched_skills"] = _list_safe(ai_data.get("matched_skills"))
+    ai_data["missing_skills"] = _list_safe(ai_data.get("missing_skills"))
+    ai_data["matched_keywords"] = _list_safe(ai_data.get("matched_keywords"))
+    ai_data["missing_keywords"] = _list_safe(ai_data.get("missing_keywords"))
+    ai_data["missing_experience"] = _list_safe(ai_data.get("missing_experience"))
+    ai_data["missing_referees"] = _list_safe(ai_data.get("missing_referees"))
+    ai_data["missing_education"] = _list_safe(ai_data.get("missing_education"))
+    ai_data["incomplete_text_snippets"] = _list_safe(ai_data.get("incomplete_text_snippets"))
+    ai_data["ats_formatting_issues"] = _list_safe(ai_data.get("ats_formatting_issues"))
+
+    # Numbers / booleans
+    ai_data["hard_skills_matched"] = _int_safe(ai_data.get("hard_skills_matched", len(ai_data["matched_skills"])))
+    ai_data["hard_skills_missing"] = _int_safe(ai_data.get("hard_skills_missing", len(ai_data["missing_skills"])))
+    ai_data["soft_skills_matched"] = _int_safe(ai_data.get("soft_skills_matched"))
+    ai_data["soft_skills_missing"] = _int_safe(ai_data.get("soft_skills_missing"))
+    ai_data["tools_matched"] = _int_safe(ai_data.get("tools_matched"))
+    ai_data["tools_missing"] = _int_safe(ai_data.get("tools_missing"))
+    ai_data["experience_matched"] = _int_safe(ai_data.get("experience_matched", len(ai_data["matched_keywords"])))
+    ai_data["experience_missing"] = _int_safe(ai_data.get("experience_missing", len(ai_data["missing_experience"])))
+    ai_data["education_relevant"] = _bool_safe(ai_data.get("education_relevant", False))
+    ai_data["spelling_errors_count"] = _int_safe(ai_data.get("spelling_errors_count", 0))
+
+    # If the model provided arrays but counts were missing/zero, overwrite counts with list lengths
+    try:
+        if ai_data.get("matched_skills") and ai_data.get("hard_skills_matched", 0) == 0:
+            ai_data["hard_skills_matched"] = len(ai_data["matched_skills"])
+        if ai_data.get("missing_skills") and ai_data.get("hard_skills_missing", 0) == 0:
+            ai_data["hard_skills_missing"] = len(ai_data["missing_skills"])
+        if ai_data.get("matched_keywords") and ai_data.get("experience_matched", 0) == 0:
+            ai_data["experience_matched"] = len(ai_data["matched_keywords"])
+        if ai_data.get("missing_experience") and ai_data.get("experience_missing", 0) == 0:
+            ai_data["experience_missing"] = len(ai_data["missing_experience"])
     except Exception:
-        ai_data = {}
+        pass
 
-    # --- Safe defaults ---
-    fields_defaults = {
-        "hard_skills_matched": 0,
-        "hard_skills_missing": 0,
-        "soft_skills_matched": 0,
-        "soft_skills_missing": 0,
-        "tools_matched": 0,
-        "tools_missing": 0,
-        "experience_matched": 0,
-        "experience_missing": 0,
-        "education_relevant": False,
-        "ats_formatting_issues": [],
-        "matched_skills": [],
-        "missing_skills": [],
-        "matched_keywords": [],
-        "missing_keywords": [],
-        "missing_experience": [],
-        "missing_referees": [],
-        "missing_education": [],
-        "spelling_errors_count": 0,
-        "incomplete_text_snippets": []
-    }
-    for k, v in fields_defaults.items():
-        ai_data.setdefault(k, v)
+    # Ensure lists exist (never None)
+    for k in [
+        "matched_skills", "missing_skills", "matched_keywords", "missing_keywords",
+        "missing_experience", "missing_referees", "missing_education",
+        "incomplete_text_snippets", "ats_formatting_issues"
+    ]:
+        ai_data.setdefault(k, [])
 
-    # --- Final score calculation (Overriding AI score with your ATS logic) ---
+    # --- Final score calculation (Overriding AI) ---
     ai_data["match_percentage"] = calculate_weighted_score(ai_data)
 
-    # --- Pie charts ---
+    # --- Pie charts (unchanged) ---
     skills_chart = safe_pie_chart(
         [len(ai_data["matched_skills"]), len(ai_data["missing_skills"])],
         ["Matched Skills", "Missing Skills"],
@@ -444,6 +518,7 @@ def score_cv(request, doc_id):
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
