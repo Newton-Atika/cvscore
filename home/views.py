@@ -266,7 +266,6 @@ Use this formula:
 
 ### MANDATORY PENALTY & MATCH RULES (STRICT LIKE SKILLSYNCER):
 - Only count a skill as matched if it is explicitly written in the CV in a clear context sentence — mere listing without context should be penalized.
-- Experience only counts if responsibilities in the CV are action-driven and directly map to the JD with measurable or clearly stated outcomes.
 - If a JD responsibility is NOT addressed directly in the CV with proof of execution, count it as missing experience.
 - Keywords must appear in context. If a keyword appears only once or appears in a vague or broad sentence, classify it as weak — include it in matched_keywords but do NOT give full score weight.
 - Education only counts as fully matched if degree title or field clearly aligns. Anything generic or unrelated → partial or zero credit.
@@ -392,6 +391,7 @@ CV:
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
