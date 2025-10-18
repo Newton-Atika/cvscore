@@ -296,6 +296,7 @@ def score_cv(request, doc_id):
             model="gpt-5-nano",
             messages=[{"role": "user", "content": prompt}],
             temperature=1,
+            timeout=20 
         )
         ai_text = response.choices[0].message.content.strip()
     except Exception as e:
@@ -367,4 +368,5 @@ def score_cv(request, doc_id):
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
