@@ -252,11 +252,12 @@ def score_cv(request, doc_id):
 
     # --- Prepare AI prompt with explicit example ---
     prompt = f"""
-You are an ATS scoring engine.
+You are an ATS scoring engine similar to SkillSyncer and MUST be conservative when assigning matches.
+Never overestimate — if a match is unclear, count it as missing.
 
 Analyze the following CV against the Job Description and return ONLY valid JSON — no commentary or markdown.
 
-### Scoring Framework (ALWAYS APPLY THIS):
+### Scoring Framework (STRICT & CONSERVATIVE):
 Use this weighted formula to calculate match_percentage:
 - Skills Match = 30%
 - Relevant Experience Match = 35%
@@ -264,13 +265,16 @@ Use this weighted formula to calculate match_percentage:
 - Education Match = 5%
 - Professional Completion (spelling, referees, completeness, structure) = 10%
 
-For any CV, extract all exact:
-- hard & soft skills from job description and compare against extracted hard and soft skills from the CV
-- measurable responsibilities from the job description and compare with extracted work experience from the CV for
-- critical keywords (e.g., "milestones", "SOW", "tracking", "risk escalation", etc.) from the job description to compare with those in CV
-- education requirement alignment 
-- presence of referees, spelling issues, incomplete sections
-
+### SCORING RULES (MANDATORY - STRICT LIKE SKILLSYNCER):
+- Count a skill as **matched only if the wording is clearly present or a strong synonym is used in a contextual sentence, NOT just as a list item**.
+- Count experience as relevant ONLY if there is **action-based proof** linked to a job responsibility (e.g., "Led X", "Managed Y", "Tracked Z").
+- If a keyword appears **only once without context**, treat it as a weak match — reduce its impact.
+- Missing even ONE major responsibility from the JD should significantly lower Relevant Experience score.
+- Education only counts as fully matched if **degree name or field closely matches** the expected requirement. Partial relevance → partial credit.
+- **Referees count only if at least TWO references have BOTH name and contact (email or phone).**
+- Penalize scores if CV formatting suggests ATS parsing issues (e.g., headers merged, no bullet structure, unclear sections).
+- Penalize for generic wording like “responsible for” without demonstrating ownership or impact.
+- Spelling errors: If unsure, assume 0. Do NOT inflate spelling errors just to decrease score.
 
 ### Output JSON Format (STRICT):
 {{
@@ -384,6 +388,7 @@ CV:
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
