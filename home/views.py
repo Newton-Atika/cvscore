@@ -280,7 +280,7 @@ def score_cv(request, doc_id):
     try:
         client = OpenAI(api_key=settings.OPENAI_API_KEY)
         response = client.chat.completions.create(
-            model="gpt-5-nano",  # use a valid model
+            model="gpt-4o-mini",  # use a valid model
             messages=[{"role": "user", "content": prompt}],
             temperature=1,
             timeout=20,
@@ -365,6 +365,7 @@ def score_cv(request, doc_id):
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
