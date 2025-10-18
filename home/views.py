@@ -258,8 +258,8 @@ Analyze the following CV against the Job Description and return ONLY valid JSON 
 
 ### STRICT SCORING FRAMEWORK:
 Use this formula:
-- Skills Match = 25%
-- Relevant Experience Match = 50%
+- Skills Match = 35%
+- Relevant Experience Match = 40%
 - Keywords Match = 10%
 - Education Match = 5%
 - Professional Completion (ATS formatting, spelling, referees, structure) = 10%
@@ -391,6 +391,7 @@ CV:
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
