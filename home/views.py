@@ -369,8 +369,8 @@ CV:
     skills_raw_score = (len(matched_skills) / skills_total) * 100 if skills_total > 0 else 0
 
 # Experience (40%)
-    experience_total = len(matched_experience) + len(missing_experience)
-    experience_raw_score = (len(matched_experience) / experience_total) * 100 if experience_total > 0 else 0
+    experience_total = len(matched_keywords) + len(missing_experience)
+    experience_raw_score = (len(matched_keywords) / experience_total) * 100 if experience_total > 0 else 0
 
 # Keywords (10%)
     keywords_total = len(matched_keywords) + len(missing_keywords)
@@ -443,6 +443,7 @@ CV:
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
