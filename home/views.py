@@ -354,6 +354,16 @@ CV:
     ai_data.setdefault("missing_education", [])
     ai_data.setdefault("spelling_errors_count", 0)
     ai_data.setdefault("incomplete_text_snippets", [])
+
+    matched_skills = ai_data["matched_skills"]
+    missing_skills = ai_data["missing_skills"]
+    matched_keywords = ai_data["matched_keywords"]
+    missing_keywords = ai_data["missing_keywords"]
+    missing_experience = ai_data["missing_experience"]
+    missing_referees = ai_data["missing_referees"]
+    missing_education = ai_data["missing_education"]
+    spelling_errors_count = ai_data["spelling_errors_count"]
+    incomplete_text_snippets = ai_data["incomplete_text_snippets"]
     # Skills (35%)
     skills_total = len(matched_skills) + len(missing_skills)
     skills_raw_score = (len(matched_skills) / skills_total) * 100 if skills_total > 0 else 0
@@ -433,6 +443,7 @@ CV:
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
