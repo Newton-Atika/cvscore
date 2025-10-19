@@ -264,6 +264,16 @@ Use this formula:
 - Education Match = 5%
 - Professional Completion (ATS formatting, spelling, referees, structure) = 10%
 
+####Skills Identification Framework
+Take a look at every single word and every phrase of words in the CV and Job description. Any word or phrases that is a skill shoud be identified
+The once in the Job description but not in the CV will count as missing skills. Those that are in both will count as matched skills
+Consider synonyms and simlar words.
+
+####Missing Experience Identification Framework
+Take a look at all the sentences in the job description and CV. Identify all the key words in the sentences. If key words in a sentence in the Job
+description matches keywords in the CV strongly(90%), this does not count like a missing experience, otherwise count.
+Consider synonyms and simlar words.
+
 ### MANDATORY PENALTY & MATCH RULES (STRICT LIKE SKILLSYNCER):
 - Only count a skill as matched if it is explicitly written in the CV in a clear context sentence — mere listing without context should be penalized.
 - If a JD responsibility is NOT addressed directly in the CV with proof of execution, count it as missing experience.
@@ -344,9 +354,41 @@ CV:
     ai_data.setdefault("missing_education", [])
     ai_data.setdefault("spelling_errors_count", 0)
     ai_data.setdefault("incomplete_text_snippets", [])
+    # Skills (35%)
+    skills_total = len(matched_skills) + len(missing_skills)
+    skills_raw_score = (len(matched_skills) / skills_total) * 100 if skills_total > 0 else 0
+
+# Experience (40%)
+    experience_total = len(matched_experience) + len(missing_experience)
+    experience_raw_score = (len(matched_experience) / experience_total) * 100 if experience_total > 0 else 0
+
+# Keywords (10%)
+    keywords_total = len(matched_keywords) + len(missing_keywords)
+    keywords_raw_score = (len(matched_keywords) / keywords_total) * 100 if keywords_total > 0 else 0
+
+# Education (5%)
+    education_raw_score = 100 if not missing_education else 0
+
+# Completion / ATS Health (10%)
+    completion_raw_score = 100
+    if missing_referees: completion_raw_score -= 40  # -40% if referees don't meet 2-with-contact rule
+    if spelling_errors_count > 3: completion_raw_score -= 20  # penalize
+    if incomplete_text_snippets: completion_raw_score -= 20  # penalize for broken formatting
+
+# Final Weighted Score
+    final_score = (
+        skills_raw_score * 0.35 +
+        experience_raw_score * 0.40 +
+        keywords_raw_score * 0.10 +
+        education_raw_score * 0.05 +
+        completion_raw_score * 0.10
+    )
 
     ai_data["match_percentage"] = safe_score(ai_data["match_percentage"])
+    calculated_score = round(final_score)  # Or int(final_score) for floor
 
+# Override AI score with backend authoritative score
+    ai_data["match_percentage"] = safe_score(calculated_score)
     # --- Pie charts ---
     skills_chart = safe_pie_chart(
         [len(ai_data["matched_skills"]), len(ai_data["missing_skills"])],
@@ -391,6 +433,7 @@ CV:
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
