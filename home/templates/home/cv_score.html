@@ -141,6 +141,12 @@
       <h2>Overall Match Score</h2>
       <p style="font-size: 1.4rem;">{{ ai_data.match_percentage }}%</p>
       <img class="chart" src="data:image/png;base64,{{ overall_chart }}" alt="Overall Match Score"/>
+
+      {% if ai_data.match_percentage < 85 %}
+        <p style="margin-top:10px; color:orange; font-size:0.95rem;">
+          ⚠ Your score is below 85%. To be more competitive for this role, it is recommended to <strong>add more relevant skills and highlight stronger experience achievements</strong> tailored to the job description.
+        </p>
+      {% endif %}
     </div>
 
     <!-- Skills -->
@@ -163,6 +169,12 @@
           <li>None</li>
         {% endfor %}
       </ul>
+
+      {% if ai_data.missing_skills %}
+        <p style="margin-top:8px; font-size:0.9rem; color:orange;">
+          💡 Consider adding these skills to your CV or framing your experience to reflect them — candidates who include more aligned skills have a higher chance of passing ATS filters and impressing recruiters.
+        </p>
+      {% endif %}
     </div>
 
     <!-- Experience -->
@@ -177,6 +189,12 @@
           <li>None</li>
         {% endfor %}
       </ul>
+
+      {% if ai_data.missing_experience %}
+        <p style="margin-top:8px; font-size:0.9rem; color:orange;">
+          💡 Highlight projects or responsibilities that demonstrate this experience — even if done in internships, freelance work, or academic projects.
+        </p>
+      {% endif %}
     </div>
 
     <!-- Education -->
@@ -209,6 +227,12 @@
           <li>None</li>
         {% endfor %}
       </ul>
+
+      {% if ai_data.missing_keywords %}
+        <p style="margin-top:8px; font-size:0.9rem; color:orange;">
+          ✅ Tip: Naturally integrate these keywords into your CV summary, skills, or experience bullet points to increase ATS compatibility.
+        </p>
+      {% endif %}
     </div>
 
     <!-- Referees -->
