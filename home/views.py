@@ -252,43 +252,25 @@ def score_cv(request, doc_id):
 
     # --- Prepare AI prompt with explicit example ---
     prompt = f"""
-You are an ATS scoring engine modeled after SkillSyncer. You MUST be conservative and harsh when assigning matches. Never assume a match — if there is any doubt or wording is vague, treat it as missing. Apply strict ATS penalty deductions.
+You are an **ATS Scoring Engine** modeled strictly after SkillSyncer.
+You MUST be conservative and deterministic. Always apply the same scoring logic given identical inputs.
+Never use creative interpretation. Never assume a match unless it is explicit.
+Do not paraphrase or rename skills, experiences, or keywords — use them exactly as written.
+Analyze the following CV against the Job Description and return **ONLY valid JSON** — no commentary, no markdown.
 
-Analyze the following CV against the Job Description and return ONLY valid JSON — no commentary or markdown.
 
-### STRICT SCORING FRAMEWORK:
-Use this formula:
-- Skills Match = 35%
-- Relevant Experience Match = 40%
-- Keywords Match = 10%
-- Education Match = 5%
-- Professional Completion (ATS formatting, spelling, referees, structure) = 10%
 
-####Skills Identification Framework
-Take a look at every single word and every phrase of words in the CV and Job description. Any word or phrases that is a skill shoud be identified
-The once in the Job description but not in the CV will count as missing skills. Those that are in both will count as matched skills
-Consider synonyms and simlar words.
+## STRICT RULES
+- Count a skill as matched **only if explicitly written** and used in a context sentence.
+- If a JD duty lacks proof of execution in the CV, it is **missing experience**.
+- Keywords only count if used in context; isolated mentions = weak match.
+- Education only counts if the degree and field directly match.
+- Referees: must have at least 2 with both name and contact info.
+- Penalize missing section headers, dense paragraphs, inconsistent dates.
+- Deduct for phrases like “responsible for” without measurable proof.
+- Never give benefit of doubt; if unsure → count as missing.
 
-####Missing Experience Identification Framework
-Take a look at all the sentences in the job description and CV. Identify all the key words in the sentences. If key words in a sentence in the Job
-description matches keywords in the CV strongly(90%), this does not count like a missing experience, otherwise count.
-Consider synonyms and simlar words.
-
-### MANDATORY PENALTY & MATCH RULES (STRICT LIKE SKILLSYNCER):
-- Only count a skill as matched if it is explicitly written in the CV in a clear context sentence — mere listing without context should be penalized.
-- If a JD responsibility is NOT addressed directly in the CV with proof of execution, count it as missing experience.
-- Keywords must appear in context. If a keyword appears only once or appears in a vague or broad sentence, classify it as weak — include it in matched_keywords but do NOT give full score weight.
-- Education only counts as fully matched if degree title or field clearly aligns. Anything generic or unrelated → partial or zero credit.
-- Referees only count if at least TWO referees include BOTH name AND contact (email or phone). Anything less → mark as missing.
-- ATS Formatting Penalty: Deduct completion score for any of these:
-  - No clear section headers like EXPERIENCE / SKILLS / EDUCATION
-  - Dense paragraphs without bullet structure
-  - Inconsistent date/job alignment causing parsing ambiguity
-- Penalize generic phrases like “responsible for” without quantifiable or ownership-based proof.
-- Do NOT assume synonyms unless they are industry-standard and used within proper context.
-- Spelling errors: Only count if clearly identifiable. If unsure, assume 0.
-
-### Output JSON Format (STRICT - NO EXTRA KEYS):
+## OUTPUT FORMAT (strict JSON only)
 {{
     "match_percentage": <integer>,
     "matched_skills": [...],
@@ -318,9 +300,11 @@ CV:
         response = client.chat.completions.create(
             model="gpt-4o-mini",  # use a valid model
             messages=[{"role": "user", "content": prompt}],
-            temperature=1,
+            temperature=0,
+            top_p=0.1,
             timeout=20,
-            stream=True
+            seed=1234,
+            stream=False
          )
 
         full_response = ""
@@ -443,6 +427,7 @@ CV:
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
