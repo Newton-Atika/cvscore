@@ -304,7 +304,7 @@ CV:
             top_p=0.1,
             timeout=20,
             seed=1234,
-            stream=False
+            stream=True
          )
 
         full_response = ""
@@ -427,6 +427,7 @@ CV:
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
