@@ -375,11 +375,11 @@ CV:
 
 # Final Weighted Score
     final_score = (
-        skills_raw_score * 0.35 +
-        experience_raw_score * 0.40 +
-        keywords_raw_score * 0.10 +
+        skills_raw_score * 0.50 +
+        experience_raw_score * 0.10 +
+        keywords_raw_score * 0.30 +
         education_raw_score * 0.05 +
-        completion_raw_score * 0.10
+        completion_raw_score * 0.05
     )
 
     ai_data["match_percentage"] = safe_score(ai_data["match_percentage"])
@@ -431,6 +431,7 @@ CV:
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
