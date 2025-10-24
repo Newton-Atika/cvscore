@@ -382,7 +382,7 @@ CV:
         completion_raw_score * 0.05
     )
 
-    ai_data["match_percentage"] = safe_score(ai_data["match_percentage"])
+    #ai_data["match_percentage"] = safe_score(ai_data["match_percentage"])
     calculated_score = round(final_score)  # Or int(final_score) for floor
 
 # Override AI score with backend authoritative score
@@ -431,6 +431,7 @@ CV:
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
