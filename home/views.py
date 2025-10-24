@@ -253,12 +253,15 @@ def score_cv(request, doc_id):
     # --- Prepare AI prompt with explicit example ---
     prompt = f"""
 You are an **ATS Scoring Engine** modeled strictly after SkillSyncer.
-You MUST be conservative and deterministic. Always apply the same scoring logic given identical inputs.
+You MUST be conservative and deterministic. Always apply the same scoring logic.
 Never use creative interpretation. Never assume a match unless it is explicit.
 Do not paraphrase or rename skills, experiences, or keywords — use them exactly as written.
-Analyze the following CV against the Job Description and return **ONLY valid JSON** — no commentary, no markdown.
 
-
+Skills scoring criteria.
+- You must look at every single word and phrase used.
+- Look at every single word and phrase used both in the CV and job description. If a word or phrase is a skill, then count it as a skill.
+- Those skills in the Job description and not in the CV will count as missing skills.
+- Those skills in both the job description and Cv, they will count as match skills.
 
 ## STRICT RULES
 - Count a skill as matched **only if explicitly written** and used in a context sentence.
@@ -283,6 +286,7 @@ Analyze the following CV against the Job Description and return **ONLY valid JSO
     "spelling_errors_count": <integer>,
     "incomplete_text_snippets": [...]
 }}
+Analyze the following CV against the Job Description and return **ONLY valid JSON** — no commentary, no markdown.
 
 Job Description:
 {doc.job_description}
@@ -427,6 +431,7 @@ CV:
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
