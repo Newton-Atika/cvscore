@@ -375,9 +375,9 @@ CV:
 
 # Final Weighted Score
     final_score = (
-        skills_raw_score * 0.50 +
+        skills_raw_score * 0.80 +
         experience_raw_score * 0.05 +
-        keywords_raw_score * 0.40 +
+        keywords_raw_score * 0.10 +
         education_raw_score * 0.025 +
         completion_raw_score * 0.025
     )
@@ -431,6 +431,7 @@ CV:
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
