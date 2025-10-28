@@ -304,7 +304,7 @@ CV:
         response = client.chat.completions.create(
             model="gpt-4o-mini",  # use a valid model
             messages=[{"role": "user", "content": prompt}],
-            temperature=0,
+            temperature=1,
             top_p=0.1,
             timeout=20,
             seed=1234,
@@ -431,6 +431,7 @@ CV:
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
