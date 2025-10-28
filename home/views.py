@@ -253,24 +253,19 @@ def score_cv(request, doc_id):
     # --- Prepare AI prompt with explicit example ---
     prompt = f"""
 You are an **ATS Scoring Engine** modeled strictly after SkillSyncer.
-You MUST be conservative and deterministic. Always apply the same scoring logic.
 Never use creative interpretation. Never assume a match unless it is explicit.
 Do not paraphrase or rename skills, experiences, or keywords — use them exactly as written.
 
 Skills scoring criteria.
-- You must look at every single word and phrase used.
-- Look at every single word and phrase used both in the CV and job description. If a word or phrase is a skill, then count it as a skill.
-- Those skills in the Job description and not in the CV will count as missing skills.
-- Those skills in both the job description and Cv, they will count as match skills.
+- start by listing all possible words or phrases in the CV and Job description.
+- Look at every single word and phrase used both in the CV and job description. If a word or phrase is a skill, classify it as a skill otherwise leave it.
+- Those skills in the Job description and not in the CV will listed as missing skills.
+- Those skills in both the job description and Cv, they will listed as match skills.
 
 ## STRICT RULES
-- Count a skill as matched **only if explicitly written** and used in a context sentence.
 - If a JD duty lacks proof of execution in the CV, it is **missing experience**.
-- Keywords only count if used in context; isolated mentions = weak match.
 - Education only counts if the degree and field directly match.
 - Referees: must have at least 2 with both name and contact info.
-- Penalize missing section headers, dense paragraphs, inconsistent dates.
-- Deduct for phrases like “responsible for” without measurable proof.
 - Never give benefit of doubt; if unsure → count as missing.
 
 ## OUTPUT FORMAT (strict JSON only)
@@ -431,6 +426,7 @@ CV:
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
