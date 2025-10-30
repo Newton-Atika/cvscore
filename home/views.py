@@ -18,10 +18,11 @@ import requests
 matplotlib.use('Agg')
 import certifi
 import nltk
-from nltk.corpus import stopwords
+from nltk.corpus import stopwords, wordnet
 from nltk.tokenize import word_tokenize
 from nltk.util import ngrams
 from nltk import pos_tag, RegexpParser
+from nltk.stem import WordNetLemmatizer
 
 PAYSTACK_SECRET_KEY = settings.PAYSTACK_SECRET_KEY
 
@@ -387,67 +388,110 @@ CV:
     cv_text = doc.extracted_text or ""
 
 # --- Ensure NLTK data is available ---
+
     try:
         nltk.data.find('tokenizers/punkt')
         nltk.data.find('tokenizers/punkt_tab')
         nltk.data.find('corpora/stopwords')
+        nltk.data.find('corpora/wordnet')
         nltk.data.find('taggers/averaged_perceptron_tagger_eng')
     except LookupError:
         nltk.download('punkt', quiet=True)
         nltk.download('punkt_tab', quiet=True)
         nltk.download('stopwords', quiet=True)
+        nltk.download('wordnet', quiet=True)
         nltk.download('averaged_perceptron_tagger_eng', quiet=True)
 
-# --- Text Preprocessing and Phrase Extraction ---
-    def preprocess_with_phrases_and_nouns(text):
+
+# --- Helper: Get base form of a word ---
+    lemmatizer = WordNetLemmatizer()
+
+    def get_wordnet_pos(tag):
+        """Map POS tag to WordNet part of speech."""
+        if tag.startswith('J'):
+            return wordnet.ADJ
+        elif tag.startswith('V'):
+            return wordnet.VERB
+        elif tag.startswith('N'):
+            return wordnet.NOUN
+        elif tag.startswith('R'):
+            return wordnet.ADV
+        else:
+            return wordnet.NOUN
+
+
+# --- Helper: Get synonyms of a word ---
+    def get_synonyms(word):
+        """Return a small set of synonyms for a word using WordNet."""
+        synonyms = set()
+        for syn in wordnet.synsets(word):
+            for lemma in syn.lemmas():
+                synonyms.add(lemma.name().replace('_', ' '))
+        return synonyms
+
+
+# --- Main Preprocessor ---
+    def preprocess_with_phrases_nouns_synonyms(text):
         """
-        Preprocesses text into individual words, bigrams, trigrams, and noun phrases.
-        Assigns weights: word=1, bigram=2, trigram=3, noun phrase=4.
+        Extract meaningful words, phrases, noun phrases, and synonyms.
+        Weighted: word=1, bigram=2, trigram=3, noun phrase=4, synonym=1.
         """
         text = text.lower()
         text = re.sub(r'[^a-z0-9+\-\s]', ' ', text)
-        words = word_tokenize(text)
 
+        words = word_tokenize(text)
         stop_words = set(stopwords.words('english'))
         words = [w for w in words if w not in stop_words and len(w) > 1]
 
-    # --- POS tagging for noun phrase detection ---
-        tagged = pos_tag(words)
-        grammar = "NP: {<JJ>*<NN.*>+}"  # adjective(s) + noun(s)
+    # Lemmatize words with POS tagging
+        tagged_words = pos_tag(words)
+        lemmatized = [
+            lemmatizer.lemmatize(w, get_wordnet_pos(t))
+            for w, t in tagged_words
+        ]
+
+    # Noun phrase extraction
+        grammar = "NP: {<JJ>*<NN.*>+}"
         cp = RegexpParser(grammar)
-        tree = cp.parse(tagged)
+        tree = cp.parse(tagged_words)
 
         noun_phrases = []
         for subtree in tree.subtrees(filter=lambda t: t.label() == 'NP'):
             np = ' '.join(word for word, pos in subtree.leaves())
-            if len(np.split()) > 1:  # Only keep multi-word phrases
+            if len(np.split()) > 1:
                 noun_phrases.append(np)
 
-    # --- Create bigrams and trigrams ---
-        bigrams = [' '.join(bg) for bg in ngrams(words, 2)]
-        trigrams = [' '.join(tg) for tg in ngrams(words, 3)]
+    # Create bigrams and trigrams
+        bigrams = [' '.join(bg) for bg in ngrams(lemmatized, 2)]
+        trigrams = [' '.join(tg) for tg in ngrams(lemmatized, 3)]
 
-    # --- Combine and assign weights ---
-        weighted_terms = {w: 1 for w in words}
+    # Gather synonyms for all lemmatized words
+        synonym_terms = set()
+        for w in lemmatized:
+            synonym_terms |= get_synonyms(w)
+
+    # Combine and weight all terms
+        weighted_terms = {w: 1 for w in lemmatized}
         weighted_terms.update({bg: 2 for bg in bigrams})
         weighted_terms.update({tg: 3 for tg in trigrams})
         weighted_terms.update({np: 4 for np in noun_phrases})
+        weighted_terms.update({syn: 1 for syn in synonym_terms})
 
         return weighted_terms
 
 
-# --- Weighted Matching Function ---
-    def calculate_skillmatcher_score(job_description, cv_text):
+# --- Match Calculation ---
+    def calculate_skillmatcher_plus_score(job_description, cv_text):
         """
-        Calculates weighted match score between Job Description and CV.
-        Returns percentage score and sample matched terms.
+        Calculates weighted, synonym-aware match between JD and CV.
+        Returns (match_percentage, matched_terms).
         """
-        jd_terms = preprocess_with_phrases_and_nouns(job_description)
-        cv_terms = preprocess_with_phrases_and_nouns(cv_text)
+        jd_terms = preprocess_with_phrases_nouns_synonyms(job_description)
+        cv_terms = preprocess_with_phrases_nouns_synonyms(cv_text)
 
         if not jd_terms:
             return 0, set()
-
+ 
         common_terms = set(jd_terms.keys()).intersection(set(cv_terms.keys()))
 
         matched_weight = sum(jd_terms[t] for t in common_terms)
@@ -457,14 +501,16 @@ CV:
         return round(score, 2), common_terms
 
 
-# --- Example Integration (inside your Django view) ---
+# --- Example integration (Django view) ---
     job_description = doc.job_description or ""
     cv_text = doc.extracted_text or ""
 
-    match_percentage, matched_phrases = calculate_skillmatcher_score(job_description, cv_text)
-
-# Safe rounding if you use your existing safe_score function
+    match_percentage, matched_phrases = calculate_skillmatcher_plus_score(job_description, cv_text)
     ai_data["match_percentage"] = safe_score(match_percentage)
+
+    print(f"SkillSyncer+ Match Score: {match_percentage}%")
+    print(f"Matched Terms: {list(matched_phrases)[:25]}")
+
 # Override AI score with backend authoritative score
     ai_data["match_percentage"] = safe_score(match_percentage)
     # --- Pie charts ---
@@ -511,6 +557,7 @@ CV:
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
