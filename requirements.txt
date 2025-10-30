@@ -234,3 +234,6 @@ yt-dlp==2025.8.11
 zopfli==0.2.3.post1
 whitenoise==6.8.2
 nltk==3.9.1
+sentence-transformers
+torch
+
