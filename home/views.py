@@ -293,9 +293,6 @@ CV:
 {doc.extracted_text}
 """
 
-
-
-
     # --- Call OpenAI ---
     try:
         client = OpenAI(api_key=settings.OPENAI_API_KEY)
@@ -402,7 +399,7 @@ CV:
     # Convert to lowercase
         text = text.lower()
     # Remove punctuation, numbers, and special characters
-        text = re.sub(r'[^a-z\s]', '', text)
+        text = re.sub(r'[^a-z0-9+\-\s]', '', text)
     # Tokenize
         words = word_tokenize(text)
     # Remove stopwords (common words like "the", "and", etc.)
@@ -417,7 +414,10 @@ CV:
     common_words = jd_words.intersection(cv_words)
 
 # --- Step 3: Calculate match percentage ---
-    match_percentage = (len(common_words) / len(jd_words) * 100) if jd_words else 0
+    if len(jd_words) > 0:
+        match_percentage = (len(common_words) / len(jd_words)) * 100
+    else:
+        match_percentage = 0
 
 # Override AI score with backend authoritative score
     ai_data["match_percentage"] = safe_score(match_percentage)
@@ -465,6 +465,7 @@ CV:
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
