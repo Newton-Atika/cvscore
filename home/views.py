@@ -380,44 +380,41 @@ CV:
     #ai_data["match_percentage"] = safe_score(ai_data["match_percentage"])
     calculated_score = round(final_score)  # Or int(final_score) for floor    
 
-# --- Ensure NLTK data is available (safe for Railway) ---
-    try:
-        nltk.data.find('tokenizers/punkt')
-        nltk.data.find('tokenizers/punkt_tab')
-        nltk.data.find('corpora/stopwords')
-    except LookupError:
-        nltk.download('punkt', quiet=True)
-        nltk.download('punkt_tab', quiet=True)
-        nltk.download('stopwords', quiet=True)
-
-# Example inputs
+# Example texts
     job_description = """{doc.job_description}"""
     cv_text = """{doc.extracted_text}"""
 
-# --- Step 1: Clean and tokenize ---
-    def preprocess(text):
-    # Convert to lowercase
+# --- Define meaningless words (stopwords) ---
+    common_words = {
+    'the', 'a', 'an', 'and', 'or', 'of', 'to', 'in', 'for', 'on', 'with', 'is', 'are', 
+    'was', 'were', 'be', 'been', 'being', 'that', 'this', 'by', 'as', 'at', 'from', 
+    'it', 'its', 'if', 'but', 'then', 'than', 'so', 'such', 'their', 'they', 'them',
+    'we', 'our', 'ours', 'i', 'me', 'my', 'you', 'your', 'yours', 'he', 'him', 'his',
+    'she', 'her', 'hers', 'who', 'whom', 'which', 'what', 'when', 'where', 'why', 'how'
+    }
+
+# --- Function to clean and split text ---
+    def get_meaningful_words(text):
+    # Lowercase
         text = text.lower()
-    # Remove punctuation, numbers, and special characters
-        text = re.sub(r'[^a-z0-9+\-\s]', '', text)
-    # Tokenize
-        words = word_tokenize(text)
-    # Remove stopwords (common words like "the", "and", etc.)
-        stop_words = set(stopwords.words('english'))
-        words = [w for w in words if w not in stop_words and len(w) > 1]
-        return set(words)
+    # Remove punctuation and non-letter characters
+        text = re.sub(r'[^a-z0-9\s]', '', text)
+    # Split into words
+        words = text.split()
+    # Remove meaningless/common words
+        words = [w for w in words if w not in common_words and len(w) > 1]
+        return words
 
-    jd_words = preprocess(job_description)
-    cv_words = preprocess(cv_text)
+# --- Process JD and CV ---
+    jd_words = get_meaningful_words(job_description)
+    cv_words = get_meaningful_words(cv_text)
 
-# --- Step 2: Find common and unique words ---
-    common_words = jd_words.intersection(cv_words)
+# --- Find matching words ---
+    matching_words = [w for w in jd_words if w in cv_words]
+    unique_jd_words = set(jd_words)
 
-# --- Step 3: Calculate match percentage ---
-    if len(jd_words) > 0:
-        match_percentage = (len(common_words) / len(jd_words)) * 100
-    else:
-        match_percentage = 0
+# --- Calculate match percentage ---
+    match_percentage = (len(set(matching_words)) / len(unique_jd_words) * 100) if unique_jd_words else 0
 
 # Override AI score with backend authoritative score
     ai_data["match_percentage"] = safe_score(match_percentage)
@@ -465,6 +462,7 @@ CV:
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
