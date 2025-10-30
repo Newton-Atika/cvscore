@@ -286,16 +286,13 @@ CV:
             messages=[{"role": "user", "content": prompt}],
             temperature=1,
             top_p=0.1,
-            timeout=20,
+            timeout=30,   # give it a bit more time instead of streaming
             seed=1234,
-            stream=True
+            stream=False
         )
-        full_response = ""
-        for chunk in response:
-            delta = chunk.choices[0].delta
-            if delta and delta.content:
-                full_response += delta.content
-        ai_text = full_response.strip()
+
+        ai_text = response.choices[0].message.content.strip() if response.choices else "{}"
+
     except Exception as e:
         print("OpenAI error:", str(e))
         ai_text = "{}"
@@ -428,6 +425,7 @@ CV:
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
