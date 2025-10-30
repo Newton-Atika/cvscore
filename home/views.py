@@ -399,7 +399,6 @@ CV:
 
 
     def preprocess_with_phrases(text):
-    """Preprocess text into words, bigrams, and trigrams for richer comparison."""
         text = text.lower()
         text = re.sub(r'[^a-z0-9+\-\s]', '', text)
 
@@ -479,6 +478,7 @@ CV:
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
