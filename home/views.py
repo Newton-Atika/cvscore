@@ -19,7 +19,7 @@ matplotlib.use('Agg')
 import certifi
 import nltk
 from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize, ngrams
+from nltk.tokenize import word_tokenize
 from nltk.util import ngrams
 
 PAYSTACK_SECRET_KEY = settings.PAYSTACK_SECRET_KEY
@@ -476,6 +476,7 @@ CV:
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
