@@ -21,6 +21,7 @@ import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from nltk.util import ngrams
+from nltk import pos_tag, RegexpParser
 
 PAYSTACK_SECRET_KEY = settings.PAYSTACK_SECRET_KEY
 
@@ -385,51 +386,85 @@ CV:
     job_description = doc.job_description or ""
     cv_text = doc.extracted_text or ""
 
-# Ensure required NLTK data is available
+# --- Ensure NLTK data is available ---
     try:
         nltk.data.find('tokenizers/punkt')
         nltk.data.find('tokenizers/punkt_tab')
         nltk.data.find('corpora/stopwords')
+        nltk.data.find('taggers/averaged_perceptron_tagger_eng')
     except LookupError:
         nltk.download('punkt', quiet=True)
         nltk.download('punkt_tab', quiet=True)
         nltk.download('stopwords', quiet=True)
+        nltk.download('averaged_perceptron_tagger_eng', quiet=True)
 
-    def preprocess_with_phrases(text):
-        """Preprocess text into words, bigrams, and trigrams for richer comparison."""
+# --- Text Preprocessing and Phrase Extraction ---
+    def preprocess_with_phrases_and_nouns(text):
+        """
+        Preprocesses text into individual words, bigrams, trigrams, and noun phrases.
+        Assigns weights: word=1, bigram=2, trigram=3, noun phrase=4.
+        """
         text = text.lower()
-        text = re.sub(r'[^a-z0-9+\-\s]', '', text)
-
-    # Tokenize
+        text = re.sub(r'[^a-z0-9+\-\s]', ' ', text)
         words = word_tokenize(text)
 
-    # Remove stopwords
         stop_words = set(stopwords.words('english'))
         words = [w for w in words if w not in stop_words and len(w) > 1]
 
-    # Create bigrams and trigrams
+    # --- POS tagging for noun phrase detection ---
+        tagged = pos_tag(words)
+        grammar = "NP: {<JJ>*<NN.*>+}"  # adjective(s) + noun(s)
+        cp = RegexpParser(grammar)
+        tree = cp.parse(tagged)
+
+        noun_phrases = []
+        for subtree in tree.subtrees(filter=lambda t: t.label() == 'NP'):
+            np = ' '.join(word for word, pos in subtree.leaves())
+            if len(np.split()) > 1:  # Only keep multi-word phrases
+                noun_phrases.append(np)
+
+    # --- Create bigrams and trigrams ---
         bigrams = [' '.join(bg) for bg in ngrams(words, 2)]
         trigrams = [' '.join(tg) for tg in ngrams(words, 3)]
 
-    # Combine words + phrases
-        all_terms = set(words + bigrams + trigrams)
-        return all_terms
+    # --- Combine and assign weights ---
+        weighted_terms = {w: 1 for w in words}
+        weighted_terms.update({bg: 2 for bg in bigrams})
+        weighted_terms.update({tg: 3 for tg in trigrams})
+        weighted_terms.update({np: 4 for np in noun_phrases})
 
-# Example usage (replace with your actual doc fields)
-    job_description = getattr(doc, "job_description", "") or ""
-    cv_text = getattr(doc, "extracted_text", "") or ""
-
-    jd_terms = preprocess_with_phrases(job_description)
-    cv_terms = preprocess_with_phrases(cv_text)
-
-# Find common terms
-    common_terms = jd_terms.intersection(cv_terms)
-
-# Calculate match %
-    match_percentage = (len(common_terms) / len(jd_terms) * 100) if jd_terms else 0
-    print(f"Match Percentage: {match_percentage:.2f}%")
+        return weighted_terms
 
 
+# --- Weighted Matching Function ---
+    def calculate_skillmatcher_score(job_description, cv_text):
+        """
+        Calculates weighted match score between Job Description and CV.
+        Returns percentage score and sample matched terms.
+        """
+        jd_terms = preprocess_with_phrases_and_nouns(job_description)
+        cv_terms = preprocess_with_phrases_and_nouns(cv_text)
+
+        if not jd_terms:
+            return 0, set()
+
+        common_terms = set(jd_terms.keys()).intersection(set(cv_terms.keys()))
+
+        matched_weight = sum(jd_terms[t] for t in common_terms)
+        total_weight = sum(jd_terms.values())
+
+        score = (matched_weight / total_weight) * 100 if total_weight else 0
+        return round(score, 2), common_terms
+
+
+# --- Example Integration (inside your Django view) ---
+    job_description = doc.job_description or ""
+    cv_text = doc.extracted_text or ""
+
+    match_percentage, matched_phrases = calculate_skillmatcher_score(job_description, cv_text)
+
+# Safe rounding if you use your existing safe_score function
+    ai_data["match_percentage"] = safe_score(match_percentage)
 # Override AI score with backend authoritative score
     ai_data["match_percentage"] = safe_score(match_percentage)
     # --- Pie charts ---
@@ -476,6 +511,7 @@ CV:
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
