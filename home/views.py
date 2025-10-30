@@ -20,6 +20,7 @@ import certifi
 import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
+from nltk.util import ngrams
 
 PAYSTACK_SECRET_KEY = settings.PAYSTACK_SECRET_KEY
 
@@ -385,55 +386,52 @@ CV:
     cv_text = doc.extracted_text or ""
 
 
-# --- Define meaningless words (stopwords) ---
-    common_words = {
-    'a', 'about', 'above', 'after', 'again', 'against', 'all', 'am', 'an', 'and', 'any',
-    'are', 'aren’t', 'as', 'at', 'be', 'because', 'been', 'before', 'being', 'below',
-    'between', 'both', 'but', 'by', 'can', 'can’t', 'cannot', 'could', 'couldn’t', 'did',
-    'didn’t', 'do', 'does', 'doesn’t', 'doing', 'don’t', 'down', 'during', 'each', 'few',
-    'for', 'from', 'further', 'had', 'hadn’t', 'has', 'hasn’t', 'have', 'haven’t', 'having',
-    'he', 'he’d', 'he’ll', 'he’s', 'her', 'here', 'here’s', 'hers', 'herself', 'him',
-    'himself', 'his', 'how', 'how’s', 'i', 'i’d', 'i’ll', 'i’m', 'i’ve', 'if', 'in', 'into',
-    'is', 'isn’t', 'it', 'it’s', 'its', 'itself', 'let’s', 'me', 'more', 'most', 'mustn’t',
-    'my', 'myself', 'no', 'nor', 'not', 'of', 'off', 'on', 'once', 'only', 'or', 'other',
-    'ought', 'our', 'ours', 'ourselves', 'out', 'over', 'own', 'same', 'shan’t', 'she',
-    'she’d', 'she’ll', 'she’s', 'should', 'shouldn’t', 'so', 'some', 'such', 'than', 'that',
-    'that’s', 'the', 'their', 'theirs', 'them', 'themselves', 'then', 'there', 'there’s',
-    'these', 'they', 'they’d', 'they’ll', 'they’re', 'they’ve', 'this', 'those', 'through',
-    'to', 'too', 'under', 'until', 'up', 'very', 'was', 'wasn’t', 'we', 'we’d', 'we’ll',
-    'we’re', 'we’ve', 'were', 'weren’t', 'what', 'what’s', 'when', 'when’s', 'where',
-    'where’s', 'which', 'while', 'who', 'who’s', 'whom', 'why', 'why’s', 'with', 'won’t',
-    'would', 'wouldn’t', 'you', 'you’d', 'you’ll', 'you’re', 'you’ve', 'your', 'yours',
-    'yourself', 'yourselves'
-    }
+
+# --- Ensure NLTK data is available ---
+    try:
+        nltk.data.find('tokenizers/punkt')
+        nltk.data.find('tokenizers/punkt_tab')
+        nltk.data.find('corpora/stopwords')
+    except LookupError:
+        nltk.download('punkt', quiet=True)
+        nltk.download('punkt_tab', quiet=True)
+        nltk.download('stopwords', quiet=True)
 
 
-# --- Function to clean and split text ---
-    def get_meaningful_words(text):
-    # Lowercase
+    def preprocess_with_phrases(text):
+    """Preprocess text into words, bigrams, and trigrams for richer comparison."""
         text = text.lower()
-    # Remove punctuation and non-letter characters
-        text = re.sub(r'[^a-z0-9\s]', '', text)
-    # Split into words
-        words = text.split()
-    # Remove meaningless/common words
-        words = [w for w in words if w not in common_words and len(w) > 1]
-        return words
+        text = re.sub(r'[^a-z0-9+\-\s]', '', text)
 
-# --- Process JD and CV ---
-    jd_words = get_meaningful_words(job_description)
-    cv_words = get_meaningful_words(cv_text)
+    # Tokenize words
+        words = word_tokenize(text)
 
-# --- Find matching words ---
-    matching_words = [w for w in jd_words if w in cv_words]
-    unique_jd_words = set(jd_words)
+    # Remove stopwords
+        stop_words = set(stopwords.words('english'))
+        words = [w for w in words if w not in stop_words and len(w) > 1]
 
-# --- Calculate match percentage ---
-    jd_words = set(get_meaningful_words(job_description))
-    cv_words = set(get_meaningful_words(cv_text))
-    matching_words = jd_words & cv_words  # intersection
-    match_percentage = (len(matching_words) / len(jd_words) * 100) if jd_words else 0
+    # Create bigrams and trigrams (joined as strings)
+        bigrams = [' '.join(bg) for bg in ngrams(words, 2)]
+        trigrams = [' '.join(tg) for tg in ngrams(words, 3)]
 
+    # Combine words + phrases
+        all_terms = set(words + bigrams + trigrams)
+        return all_terms
+
+
+# Example (replace with actual document text)
+    job_description = doc.job_description or ""
+    cv_text = doc.extracted_text or ""
+
+# Process JD and CV
+    jd_terms = preprocess_with_phrases(job_description)
+    cv_terms = preprocess_with_phrases(cv_text)
+
+# Find common terms (words + phrases)
+    common_terms = jd_terms.intersection(cv_terms)
+
+# Calculate match %
+    match_percentage = (len(common_terms) / len(jd_terms) * 100) if jd_terms else 0
 
 # Override AI score with backend authoritative score
     ai_data["match_percentage"] = safe_score(match_percentage)
@@ -481,6 +479,7 @@ CV:
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
