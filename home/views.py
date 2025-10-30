@@ -381,17 +381,32 @@ CV:
     calculated_score = round(final_score)  # Or int(final_score) for floor    
 
 # Example texts
-    job_description = """{doc.job_description}"""
-    cv_text = """{doc.extracted_text}"""
+    job_description = doc.job_description or ""
+    cv_text = doc.extracted_text or ""
+
 
 # --- Define meaningless words (stopwords) ---
     common_words = {
-    'the', 'a', 'an', 'and', 'or', 'of', 'to', 'in', 'for', 'on', 'with', 'is', 'are', 
-    'was', 'were', 'be', 'been', 'being', 'that', 'this', 'by', 'as', 'at', 'from', 
-    'it', 'its', 'if', 'but', 'then', 'than', 'so', 'such', 'their', 'they', 'them',
-    'we', 'our', 'ours', 'i', 'me', 'my', 'you', 'your', 'yours', 'he', 'him', 'his',
-    'she', 'her', 'hers', 'who', 'whom', 'which', 'what', 'when', 'where', 'why', 'how'
+    'a', 'about', 'above', 'after', 'again', 'against', 'all', 'am', 'an', 'and', 'any',
+    'are', 'aren’t', 'as', 'at', 'be', 'because', 'been', 'before', 'being', 'below',
+    'between', 'both', 'but', 'by', 'can', 'can’t', 'cannot', 'could', 'couldn’t', 'did',
+    'didn’t', 'do', 'does', 'doesn’t', 'doing', 'don’t', 'down', 'during', 'each', 'few',
+    'for', 'from', 'further', 'had', 'hadn’t', 'has', 'hasn’t', 'have', 'haven’t', 'having',
+    'he', 'he’d', 'he’ll', 'he’s', 'her', 'here', 'here’s', 'hers', 'herself', 'him',
+    'himself', 'his', 'how', 'how’s', 'i', 'i’d', 'i’ll', 'i’m', 'i’ve', 'if', 'in', 'into',
+    'is', 'isn’t', 'it', 'it’s', 'its', 'itself', 'let’s', 'me', 'more', 'most', 'mustn’t',
+    'my', 'myself', 'no', 'nor', 'not', 'of', 'off', 'on', 'once', 'only', 'or', 'other',
+    'ought', 'our', 'ours', 'ourselves', 'out', 'over', 'own', 'same', 'shan’t', 'she',
+    'she’d', 'she’ll', 'she’s', 'should', 'shouldn’t', 'so', 'some', 'such', 'than', 'that',
+    'that’s', 'the', 'their', 'theirs', 'them', 'themselves', 'then', 'there', 'there’s',
+    'these', 'they', 'they’d', 'they’ll', 'they’re', 'they’ve', 'this', 'those', 'through',
+    'to', 'too', 'under', 'until', 'up', 'very', 'was', 'wasn’t', 'we', 'we’d', 'we’ll',
+    'we’re', 'we’ve', 'were', 'weren’t', 'what', 'what’s', 'when', 'when’s', 'where',
+    'where’s', 'which', 'while', 'who', 'who’s', 'whom', 'why', 'why’s', 'with', 'won’t',
+    'would', 'wouldn’t', 'you', 'you’d', 'you’ll', 'you’re', 'you’ve', 'your', 'yours',
+    'yourself', 'yourselves'
     }
+
 
 # --- Function to clean and split text ---
     def get_meaningful_words(text):
@@ -414,7 +429,11 @@ CV:
     unique_jd_words = set(jd_words)
 
 # --- Calculate match percentage ---
-    match_percentage = (len(set(matching_words)) / len(unique_jd_words) * 100) if unique_jd_words else 0
+    jd_words = set(get_meaningful_words(job_description))
+    cv_words = set(get_meaningful_words(cv_text))
+    matching_words = jd_words & cv_words  # intersection
+    match_percentage = (len(matching_words) / len(jd_words) * 100) if jd_words else 0
+
 
 # Override AI score with backend authoritative score
     ai_data["match_percentage"] = safe_score(match_percentage)
@@ -462,6 +481,7 @@ CV:
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
