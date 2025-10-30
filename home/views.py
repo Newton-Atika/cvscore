@@ -17,6 +17,9 @@ from .utils import extract_text_from_file
 import requests
 matplotlib.use('Agg')
 import certifi
+import nltk
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
 
 PAYSTACK_SECRET_KEY = settings.PAYSTACK_SECRET_KEY
 
@@ -378,10 +381,44 @@ CV:
     )
 
     #ai_data["match_percentage"] = safe_score(ai_data["match_percentage"])
-    calculated_score = round(final_score)  # Or int(final_score) for floor
+    calculated_score = round(final_score)  # Or int(final_score) for floor    
+
+# --- Ensure NLTK data is available (safe for Railway) ---
+    try:
+        nltk.data.find('tokenizers/punkt')
+        nltk.data.find('corpora/stopwords')
+    except LookupError:
+        nltk.download('punkt', quiet=True)
+        nltk.download('stopwords', quiet=True)
+
+# Example inputs
+    job_description = """{doc.job_description}"""
+    cv_text = """{doc.extracted_text}"""
+
+# --- Step 1: Clean and tokenize ---
+    def preprocess(text):
+    # Convert to lowercase
+        text = text.lower()
+    # Remove punctuation, numbers, and special characters
+        text = re.sub(r'[^a-z\s]', '', text)
+    # Tokenize
+        words = word_tokenize(text)
+    # Remove stopwords (common words like "the", "and", etc.)
+        stop_words = set(stopwords.words('english'))
+        words = [w for w in words if w not in stop_words and len(w) > 1]
+        return set(words)
+
+    jd_words = preprocess(job_description)
+    cv_words = preprocess(cv_text)
+
+# --- Step 2: Find common and unique words ---
+    common_words = jd_words.intersection(cv_words)
+
+# --- Step 3: Calculate match percentage ---
+    match_percentage = (len(common_words) / len(jd_words) * 100) if jd_words else 0
 
 # Override AI score with backend authoritative score
-    ai_data["match_percentage"] = safe_score(calculated_score)
+    ai_data["match_percentage"] = safe_score(match_percentage)
     # --- Pie charts ---
     skills_chart = safe_pie_chart(
         [len(ai_data["matched_skills"]), len(ai_data["missing_skills"])],
@@ -426,6 +463,7 @@ CV:
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
