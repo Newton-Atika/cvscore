@@ -23,6 +23,7 @@ from nltk.tokenize import word_tokenize
 from nltk.util import ngrams
 from nltk import pos_tag, RegexpParser
 from nltk.stem import WordNetLemmatizer
+from difflib import SequenceMatcher
 
 PAYSTACK_SECRET_KEY = settings.PAYSTACK_SECRET_KEY
 
@@ -483,22 +484,65 @@ CV:
 # --- Match Calculation ---
     def calculate_skillmatcher_plus_score(job_description, cv_text):
         """
-        Calculates weighted, synonym-aware match between JD and CV.
-        Returns (match_percentage, matched_terms).
+        Improved NLTK-based fuzzy matching inspired by SkillSyncer.
+        Handles partial matches, synonyms, and soft weighting.
         """
-        jd_terms = preprocess_with_phrases_nouns_synonyms(job_description)
-        cv_terms = preprocess_with_phrases_nouns_synonyms(cv_text)
+
+        lemmatizer = WordNetLemmatizer()
+        stop_words = set(stopwords.words('english'))
+
+        def preprocess(text):
+            text = text.lower()
+            text = re.sub(r'[^a-z0-9+\-\s]', ' ', text)
+            tokens = [t for t in word_tokenize(text) if t not in stop_words and len(t) > 1]
+            tagged = pos_tag(tokens)
+            lemmas = [lemmatizer.lemmatize(w) for w, _ in tagged]
+            return list(set(lemmas))  # unique terms only
+
+        def get_synonyms(word):
+            syns = set()
+            for syn in wordnet.synsets(word):
+                for lemma in syn.lemmas():
+                    syns.add(lemma.name().replace("_", " "))
+            return syns
+
+        jd_terms = preprocess(job_description)
+        cv_terms = preprocess(cv_text)
 
         if not jd_terms:
             return 0, set()
- 
-        common_terms = set(jd_terms.keys()).intersection(set(cv_terms.keys()))
 
-        matched_weight = sum(jd_terms[t] for t in common_terms)
-        total_weight = sum(jd_terms.values())
+        matched_terms = set()
+        score_sum = 0
 
-        score = (matched_weight / total_weight) * 100 if total_weight else 0
-        return round(score, 2), common_terms
+        for jd_term in jd_terms:
+            best_match = 0
+            jd_synonyms = get_synonyms(jd_term)
+
+            for cv_term in cv_terms:
+            # Compute similarity
+                sim = SequenceMatcher(None, jd_term, cv_term).ratio()
+                if cv_term in jd_synonyms:
+                    sim = max(sim, 0.85)  # synonym boost
+
+                if sim > 0.85:      # strong match
+                    best_match = max(best_match, 1.0)
+                elif sim > 0.7:     # moderate match
+                    best_match = max(best_match, 0.75)
+                elif sim > 0.6:     # weak/partial match
+                    best_match = max(best_match, 0.5)
+
+            if best_match > 0:
+                matched_terms.add(jd_term)
+            score_sum += best_match
+
+        raw_score = (score_sum / len(jd_terms)) * 100
+
+    # --- Normalize to behave more like SkillSyncer
+    # Slight upward bias to reflect realistic ATS scoring
+        normalized_score = min(100, raw_score * 1.15 + 10)
+
+        return round(normalized_score, 1), matched_terms
 
 
 # --- Example integration (Django view) ---
@@ -557,4 +601,5 @@ CV:
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
