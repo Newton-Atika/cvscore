@@ -392,11 +392,13 @@ CV:
 
     try:
         nltk.data.find('tokenizers/punkt')
+        nltk.data.find('tokenizers/punkt_tab')
         nltk.data.find('corpora/stopwords')
         nltk.data.find('corpora/wordnet')
         nltk.data.find('taggers/averaged_perceptron_tagger_eng')
     except LookupError:
         nltk.download('punkt', quiet=True)
+        nltk.download('punkt_tab', quiet=True)
         nltk.download('stopwords', quiet=True)
         nltk.download('wordnet', quiet=True)
         nltk.download('averaged_perceptron_tagger_eng', quiet=True)
@@ -574,6 +576,7 @@ CV:
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
