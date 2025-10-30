@@ -226,7 +226,7 @@ from django.conf import settings
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from .models import Document, Subscription
-
+model = SentenceTransformer('all-MiniLM-L6-v2', device='cpu')
 
 def safe_score(val):
     """Sanitize score (NaN, string, out of bounds)."""
@@ -476,7 +476,6 @@ CV:
 
     # --- NEW: Semantic Embedding Similarity ---
     try:
-        model = SentenceTransformer('all-MiniLM-L6-v2')
         jd_embedding = model.encode(job_description, convert_to_tensor=True)
         cv_embedding = model.encode(cv_text, convert_to_tensor=True)
         semantic_similarity = util.cos_sim(jd_embedding, cv_embedding).item() * 100
@@ -486,7 +485,7 @@ CV:
 
     # --- Hybrid Weighted Combination ---
     hybrid_score = (
-        (match_percentage * 0.6) +  # lexical + synonym match
+        (match_percentage) +  # lexical + synonym match
         (semantic_similarity * 0.4)  # semantic match
     )
 
@@ -539,4 +538,5 @@ CV:
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
