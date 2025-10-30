@@ -23,7 +23,6 @@ from nltk.tokenize import word_tokenize
 from nltk.util import ngrams
 from nltk import pos_tag, RegexpParser
 from nltk.stem import WordNetLemmatizer
-from difflib import SequenceMatcher
 
 PAYSTACK_SECRET_KEY = settings.PAYSTACK_SECRET_KEY
 
@@ -404,9 +403,11 @@ CV:
         nltk.download('averaged_perceptron_tagger_eng', quiet=True)
 
 
+# --- Helper: Get base form of a word ---
     lemmatizer = WordNetLemmatizer()
 
     def get_wordnet_pos(tag):
+        """Map POS tag to WordNet part of speech."""
         if tag.startswith('J'):
             return wordnet.ADJ
         elif tag.startswith('V'):
@@ -415,19 +416,24 @@ CV:
             return wordnet.NOUN
         elif tag.startswith('R'):
             return wordnet.ADV
-        return wordnet.NOUN
+        else:
+            return wordnet.NOUN
 
+
+# --- Helper: Get synonyms of a word ---
     def get_synonyms(word):
+        """Return a small set of synonyms for a word using WordNet."""
         synonyms = set()
         for syn in wordnet.synsets(word):
             for lemma in syn.lemmas():
                 synonyms.add(lemma.name().replace('_', ' '))
         return synonyms
 
-    # --- Enhanced Preprocessing Function ---
+
+# --- Main Preprocessor ---
     def preprocess_with_phrases_nouns_synonyms(text):
         """
-        Extract meaningful words, bigrams, trigrams, noun phrases, and synonyms.
+        Extract meaningful words, phrases, noun phrases, and synonyms.
         Weighted: word=1, bigram=2, trigram=3, noun phrase=4, synonym=1.
         """
         text = text.lower()
@@ -437,13 +443,14 @@ CV:
         stop_words = set(stopwords.words('english'))
         words = [w for w in words if w not in stop_words and len(w) > 1]
 
+    # Lemmatize words with POS tagging
         tagged_words = pos_tag(words)
         lemmatized = [
             lemmatizer.lemmatize(w, get_wordnet_pos(t))
             for w, t in tagged_words
         ]
 
-        # --- Noun phrase extraction ---
+    # Noun phrase extraction
         grammar = "NP: {<JJ>*<NN.*>+}"
         cp = RegexpParser(grammar)
         tree = cp.parse(tagged_words)
@@ -454,16 +461,16 @@ CV:
             if len(np.split()) > 1:
                 noun_phrases.append(np)
 
-        # --- Create bigrams/trigrams ---
+    # Create bigrams and trigrams
         bigrams = [' '.join(bg) for bg in ngrams(lemmatized, 2)]
         trigrams = [' '.join(tg) for tg in ngrams(lemmatized, 3)]
 
-        # --- Synonyms ---
+    # Gather synonyms for all lemmatized words
         synonym_terms = set()
         for w in lemmatized:
             synonym_terms |= get_synonyms(w)
 
-        # --- Weighted term dictionary ---
+    # Combine and weight all terms
         weighted_terms = {w: 1 for w in lemmatized}
         weighted_terms.update({bg: 2 for bg in bigrams})
         weighted_terms.update({tg: 3 for tg in trigrams})
@@ -473,56 +480,25 @@ CV:
         return weighted_terms
 
 
-    # --- Improved SkillMatcher Plus Scoring ---
+# --- Match Calculation ---
     def calculate_skillmatcher_plus_score(job_description, cv_text):
         """
-        Fuzzy, weighted, synonym- and phrase-aware scoring.
-        Produces realistic ATS-style results similar to SkillSyncer.
+        Calculates weighted, synonym-aware match between JD and CV.
+        Returns (match_percentage, matched_terms).
         """
-
         jd_terms = preprocess_with_phrases_nouns_synonyms(job_description)
         cv_terms = preprocess_with_phrases_nouns_synonyms(cv_text)
 
         if not jd_terms:
             return 0, set()
+ 
+        common_terms = set(jd_terms.keys()).intersection(set(cv_terms.keys()))
 
-        matched_terms = set()
-        total_weight = 0
-        score_sum = 0
+        matched_weight = sum(jd_terms[t] for t in common_terms)
+        total_weight = sum(jd_terms.values())
 
-        for jd_term, weight in jd_terms.items():
-            best_match = 0
-            jd_synonyms = list(get_synonyms(jd_term))[:5]  # limit synonyms to 5
-
-            for cv_term in list(cv_terms.keys())[:1500]:  # limit total comparisons
-        # Skip overly long strings (e.g., paragraphs)
-                if len(jd_term) > 50 or len(cv_term) > 50:
-                    continue
-
-                sim = SequenceMatcher(None, jd_term, cv_term).ratio()
-
-
-                if cv_term in jd_synonyms:
-                    sim = max(sim, 0.85)  # boost synonym match
-
-                if sim > 0.85:
-                    best_match = max(best_match, 1.0)
-                elif sim > 0.7:
-                    best_match = max(best_match, 0.75)
-                elif sim > 0.6:
-                    best_match = max(best_match, 0.5)
-
-            if best_match > 0:
-                matched_terms.add(jd_term)
-            score_sum += best_match * weight
-            total_weight += weight
-
-        raw_score = (score_sum / total_weight) * 100 if total_weight else 0
-
-        # --- Normalization calibrated to SkillSyncer ---
-        normalized_score = min(100, raw_score * 0.9 + 5)
-
-        return round(normalized_score, 1), matched_terms
+        score = (matched_weight / total_weight) * 100 if total_weight else 0
+        return round(score, 2), common_terms
 
 
 # --- Example integration (Django view) ---
@@ -581,8 +557,3 @@ CV:
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
-
-
-
-
-
