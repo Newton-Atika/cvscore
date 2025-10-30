@@ -211,6 +211,23 @@ def upload_document(request):
         "days_left": days_left,
         "scans_left": scans_left,
     })
+import io
+import re
+import json
+import base64
+import nltk
+import matplotlib.pyplot as plt
+from nltk.corpus import stopwords, wordnet
+from nltk import word_tokenize, pos_tag, RegexpParser, ngrams
+from nltk.stem import WordNetLemmatizer
+from sentence_transformers import SentenceTransformer, util
+from openai import OpenAI
+from django.conf import settings
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from .models import Document, Subscription
+
+
 def safe_score(val):
     """Sanitize score (NaN, string, out of bounds)."""
     try:
@@ -243,6 +260,7 @@ def safe_pie_chart(values, labels, colors, title=""):
     plt.close()
     buf.seek(0)
     return base64.b64encode(buf.getvalue()).decode("utf-8")
+
 
 @login_required
 def score_cv(request, doc_id):
@@ -307,7 +325,7 @@ CV:
             timeout=20,
             seed=1234,
             stream=True
-         )
+        )
 
         full_response = ""
         for chunk in response:
@@ -320,7 +338,6 @@ CV:
     except Exception as e:
         print("OpenAI error:", str(e))
         ai_text = "{}"
-
 
     # --- Parse AI JSON safely ---
     try:
@@ -350,28 +367,29 @@ CV:
     missing_education = ai_data["missing_education"]
     spelling_errors_count = ai_data["spelling_errors_count"]
     incomplete_text_snippets = ai_data["incomplete_text_snippets"]
+
     # Skills (35%)
     skills_total = len(matched_skills) + len(missing_skills)
     skills_raw_score = (len(matched_skills) / skills_total) * 100 if skills_total > 0 else 0
 
-# Experience (40%)
+    # Experience (40%)
     experience_total = len(matched_keywords) + len(missing_experience)
     experience_raw_score = (len(matched_keywords) / experience_total) * 100 if experience_total > 0 else 0
 
-# Keywords (10%)
+    # Keywords (10%)
     keywords_total = len(matched_keywords) + len(missing_keywords)
     keywords_raw_score = (len(matched_keywords) / keywords_total) * 100 if keywords_total > 0 else 0
 
-# Education (5%)
+    # Education (5%)
     education_raw_score = 100 if not missing_education else 0
 
-# Completion / ATS Health (10%)
+    # Completion / ATS Health (10%)
     completion_raw_score = 100
-    if missing_referees: completion_raw_score -= 40  # -40% if referees don't meet 2-with-contact rule
-    if spelling_errors_count > 3: completion_raw_score -= 20  # penalize
-    if incomplete_text_snippets: completion_raw_score -= 20  # penalize for broken formatting
+    if missing_referees: completion_raw_score -= 40
+    if spelling_errors_count > 3: completion_raw_score -= 20
+    if incomplete_text_snippets: completion_raw_score -= 20
 
-# Final Weighted Score
+    # Final Weighted Score (before embeddings)
     final_score = (
         skills_raw_score * 0.90 +
         experience_raw_score * 0.025 +
@@ -379,16 +397,12 @@ CV:
         education_raw_score * 0.025 +
         completion_raw_score * 0.025
     )
+    calculated_score = round(final_score)
 
-    #ai_data["match_percentage"] = safe_score(ai_data["match_percentage"])
-    calculated_score = round(final_score)  # Or int(final_score) for floor    
-
-# Example texts
     job_description = doc.job_description or ""
     cv_text = doc.extracted_text or ""
 
-# --- Ensure NLTK data is available ---
-
+    # --- Ensure NLTK data is available ---
     try:
         nltk.data.find('tokenizers/punkt')
         nltk.data.find('tokenizers/punkt_tab')
@@ -402,117 +416,84 @@ CV:
         nltk.download('wordnet', quiet=True)
         nltk.download('averaged_perceptron_tagger_eng', quiet=True)
 
-
-# --- Helper: Get base form of a word ---
     lemmatizer = WordNetLemmatizer()
 
     def get_wordnet_pos(tag):
-        """Map POS tag to WordNet part of speech."""
-        if tag.startswith('J'):
-            return wordnet.ADJ
-        elif tag.startswith('V'):
-            return wordnet.VERB
-        elif tag.startswith('N'):
-            return wordnet.NOUN
-        elif tag.startswith('R'):
-            return wordnet.ADV
-        else:
-            return wordnet.NOUN
+        if tag.startswith('J'): return wordnet.ADJ
+        elif tag.startswith('V'): return wordnet.VERB
+        elif tag.startswith('N'): return wordnet.NOUN
+        elif tag.startswith('R'): return wordnet.ADV
+        else: return wordnet.NOUN
 
-
-# --- Helper: Get synonyms of a word ---
     def get_synonyms(word):
-        """Return a small set of synonyms for a word using WordNet."""
         synonyms = set()
         for syn in wordnet.synsets(word):
             for lemma in syn.lemmas():
                 synonyms.add(lemma.name().replace('_', ' '))
         return synonyms
 
-
-# --- Main Preprocessor ---
     def preprocess_with_phrases_nouns_synonyms(text):
-        """
-        Extract meaningful words, phrases, noun phrases, and synonyms.
-        Weighted: word=1, bigram=2, trigram=3, noun phrase=4, synonym=1.
-        """
         text = text.lower()
         text = re.sub(r'[^a-z0-9+\-\s]', ' ', text)
-
         words = word_tokenize(text)
         stop_words = set(stopwords.words('english'))
         words = [w for w in words if w not in stop_words and len(w) > 1]
-
-    # Lemmatize words with POS tagging
         tagged_words = pos_tag(words)
-        lemmatized = [
-            lemmatizer.lemmatize(w, get_wordnet_pos(t))
-            for w, t in tagged_words
-        ]
-
-    # Noun phrase extraction
+        lemmatized = [lemmatizer.lemmatize(w, get_wordnet_pos(t)) for w, t in tagged_words]
         grammar = "NP: {<JJ>*<NN.*>+}"
         cp = RegexpParser(grammar)
         tree = cp.parse(tagged_words)
-
         noun_phrases = []
         for subtree in tree.subtrees(filter=lambda t: t.label() == 'NP'):
             np = ' '.join(word for word, pos in subtree.leaves())
             if len(np.split()) > 1:
                 noun_phrases.append(np)
-
-    # Create bigrams and trigrams
         bigrams = [' '.join(bg) for bg in ngrams(lemmatized, 2)]
         trigrams = [' '.join(tg) for tg in ngrams(lemmatized, 3)]
-
-    # Gather synonyms for all lemmatized words
         synonym_terms = set()
         for w in lemmatized:
             synonym_terms |= get_synonyms(w)
-
-    # Combine and weight all terms
         weighted_terms = {w: 1 for w in lemmatized}
         weighted_terms.update({bg: 2 for bg in bigrams})
         weighted_terms.update({tg: 3 for tg in trigrams})
         weighted_terms.update({np: 4 for np in noun_phrases})
         weighted_terms.update({syn: 1 for syn in synonym_terms})
-
         return weighted_terms
 
-
-# --- Match Calculation ---
     def calculate_skillmatcher_plus_score(job_description, cv_text):
-        """
-        Calculates weighted, synonym-aware match between JD and CV.
-        Returns (match_percentage, matched_terms).
-        """
         jd_terms = preprocess_with_phrases_nouns_synonyms(job_description)
         cv_terms = preprocess_with_phrases_nouns_synonyms(cv_text)
-
         if not jd_terms:
             return 0, set()
- 
         common_terms = set(jd_terms.keys()).intersection(set(cv_terms.keys()))
-
         matched_weight = sum(jd_terms[t] for t in common_terms)
         total_weight = sum(jd_terms.values())
-
         score = (matched_weight / total_weight) * 100 if total_weight else 0
         return round(score, 2), common_terms
 
-
-# --- Example integration (Django view) ---
-    job_description = doc.job_description or ""
-    cv_text = doc.extracted_text or ""
-
+    # --- Base NLP match ---
     match_percentage, matched_phrases = calculate_skillmatcher_plus_score(job_description, cv_text)
-    ai_data["match_percentage"] = safe_score(match_percentage)
 
-    print(f"SkillSyncer+ Match Score: {match_percentage}%")
+    # --- NEW: Semantic Embedding Similarity ---
+    try:
+        model = SentenceTransformer('all-MiniLM-L6-v2')
+        jd_embedding = model.encode(job_description, convert_to_tensor=True)
+        cv_embedding = model.encode(cv_text, convert_to_tensor=True)
+        semantic_similarity = util.cos_sim(jd_embedding, cv_embedding).item() * 100
+    except Exception as e:
+        print("Embedding error:", str(e))
+        semantic_similarity = 0
+
+    # --- Hybrid Weighted Combination ---
+    hybrid_score = (
+        (match_percentage * 0.6) +  # lexical + synonym match
+        (semantic_similarity * 0.4)  # semantic match
+    )
+
+    ai_data["match_percentage"] = safe_score(hybrid_score)
+    print(f"Hybrid Match Score: {hybrid_score:.2f}%")
     print(f"Matched Terms: {list(matched_phrases)[:25]}")
 
-# Override AI score with backend authoritative score
-    ai_data["match_percentage"] = safe_score(match_percentage)
     # --- Pie charts ---
     skills_chart = safe_pie_chart(
         [len(ai_data["matched_skills"]), len(ai_data["missing_skills"])],
@@ -552,8 +533,10 @@ CV:
         "scans_left": subscription.scans_remaining,
         "expires_at": subscription.expires_at,
     })
+
     
 @login_required
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
