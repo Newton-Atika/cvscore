@@ -492,10 +492,15 @@ CV:
 
         for jd_term, weight in jd_terms.items():
             best_match = 0
-            jd_synonyms = get_synonyms(jd_term)
+            jd_synonyms = list(get_synonyms(jd_term))[:5]  # limit synonyms to 5
 
-            for cv_term in cv_terms.keys():
+            for cv_term in list(cv_terms.keys())[:1500]:  # limit total comparisons
+        # Skip overly long strings (e.g., paragraphs)
+                if len(jd_term) > 50 or len(cv_term) > 50:
+                    continue
+
                 sim = SequenceMatcher(None, jd_term, cv_term).ratio()
+
 
                 if cv_term in jd_synonyms:
                     sim = max(sim, 0.85)  # boost synonym match
@@ -576,6 +581,7 @@ CV:
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
