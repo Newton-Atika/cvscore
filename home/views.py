@@ -211,30 +211,12 @@ def upload_document(request):
         "days_left": days_left,
         "scans_left": scans_left,
     })
-import re, io, json, base64
-import matplotlib.pyplot as plt
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
-from openai import OpenAI
-import nltk
-from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
-from nltk.util import ngrams
-from nltk import pos_tag, RegexpParser
-from nltk.stem import WordNetLemmatizer
-
-# --- Sentence Transformers for semantic similarity ---
-from sentence_transformers import SentenceTransformer, util
-
-# Initialize SBERT model once
-_sbert_model = SentenceTransformer("all-MiniLM-L6-v2")
-
-# --- Utility functions ---
 def safe_score(val):
+    """Sanitize score (NaN, string, out of bounds)."""
     try:
         if isinstance(val, str):
             val = int(re.sub(r"[^0-9]", "", val) or 0)
-        if not isinstance(val, (int, float)) or val != val:
+        if not isinstance(val, (int, float)) or val != val:  # NaN
             return 0
         return max(0, min(100, int(val)))
     except Exception:
@@ -242,36 +224,70 @@ def safe_score(val):
 
 
 def safe_pie_chart(values, labels, colors, title=""):
+    """Create safe pie chart → returns base64 string."""
+    # Replace NaN/invalid with 0
     values = [0 if (not isinstance(v, (int, float)) or v != v) else v for v in values]
     total = sum(values)
+
     if total <= 0:
-        values, labels, colors = [1], ["No Data"], ["gray"]
+        values = [1]
+        labels = ["No Data"]
+        colors = ["gray"]
 
     plt.figure(figsize=(4, 4))
     plt.pie(values, labels=labels, colors=colors, autopct="%1.0f%%", startangle=90)
     plt.title(title, color="limegreen")
+
     buf = io.BytesIO()
     plt.savefig(buf, format="png", transparent=True)
     plt.close()
     buf.seek(0)
     return base64.b64encode(buf.getvalue()).decode("utf-8")
 
-
 @login_required
 def score_cv(request, doc_id):
-    from .models import Document, Subscription
+    # --- Subscription checks ---
     subscription, _ = Subscription.objects.get_or_create(user=request.user)
     if not subscription.free_trial_used:
         subscription.start_subscription(free=True)
     if not subscription.is_valid() or not subscription.deduct_scan():
         return redirect("initiate_payment")
 
+    # --- Get document ---
     doc = get_object_or_404(Document, id=doc_id)
 
-    # --- Call OpenAI (optional; just for structure consistency) ---
+    # --- Prepare AI prompt with explicit example ---
     prompt = f"""
-You are an **ATS Scoring Engine** modeled after SkillSyncer.
-Analyze the following CV against the job description and return strict JSON only.
+You are an **ATS Scoring Engine** modeled strictly after SkillSyncer.
+Never use creative interpretation. Never assume a match unless it is explicit.
+Do not paraphrase or rename skills, experiences, or keywords — use them exactly as written.
+
+Skills scoring criteria.
+- start by listing all possible words or phrases in the CV and Job description.
+- Look at every single word and phrase used both in the CV and job description. If a word or phrase is a skill, classify it as a skill otherwise leave it.
+- Those skills in the Job description and not in the CV will listed as missing skills.
+- Those skills in both the job description and Cv, they will listed as match skills.
+
+## STRICT RULES
+- If a JD duty lacks proof of execution in the CV, it is **missing experience**.
+- Education only counts if the degree and field directly match.
+- Referees: must have at least 2 with both name and contact info.
+- Never give benefit of doubt; if unsure → count as missing.
+
+## OUTPUT FORMAT (strict JSON only)
+{{
+    "match_percentage": <integer>,
+    "matched_skills": [...],
+    "missing_skills": [...],
+    "matched_keywords": [...],
+    "missing_keywords": [...],
+    "missing_experience": [...],
+    "missing_referees": [...],
+    "missing_education": [...],
+    "spelling_errors_count": <integer>,
+    "incomplete_text_snippets": [...]
+}}
+Analyze the following CV against the Job Description and return **ONLY valid JSON** — no commentary, no markdown.
 
 Job Description:
 {doc.job_description}
@@ -279,134 +295,251 @@ Job Description:
 CV:
 {doc.extracted_text}
 """
+
+    # --- Call OpenAI ---
     try:
         client = OpenAI(api_key=settings.OPENAI_API_KEY)
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-4o-mini",  # use a valid model
             messages=[{"role": "user", "content": prompt}],
             temperature=1,
             top_p=0.1,
-            timeout=30,   # give it a bit more time instead of streaming
+            timeout=20,
             seed=1234,
-            stream=False
-        )
+            stream=True
+         )
 
-        ai_text = response.choices[0].message.content.strip() if response.choices else "{}"
+        full_response = ""
+        for chunk in response:
+            delta = chunk.choices[0].delta
+            if delta and delta.content:
+                full_response += delta.content
+
+        ai_text = full_response.strip()
 
     except Exception as e:
         print("OpenAI error:", str(e))
         ai_text = "{}"
 
+
+    # --- Parse AI JSON safely ---
     try:
         json_str = re.search(r"\{.*\}", ai_text, re.DOTALL).group()
         ai_data = json.loads(json_str)
     except Exception:
         ai_data = {}
 
-    # --- Default structure ---
-    for k in [
-        "match_percentage","matched_skills","missing_skills",
-        "matched_keywords","missing_keywords","missing_experience",
-        "missing_referees","missing_education","spelling_errors_count",
-        "incomplete_text_snippets"
-    ]:
-        ai_data.setdefault(k, [] if "list" in str(type(ai_data.get(k))) else 0)
+    # --- Safe defaults ---
+    ai_data.setdefault("match_percentage", 0)
+    ai_data.setdefault("matched_skills", [])
+    ai_data.setdefault("missing_skills", [])
+    ai_data.setdefault("matched_keywords", [])
+    ai_data.setdefault("missing_keywords", [])
+    ai_data.setdefault("missing_experience", [])
+    ai_data.setdefault("missing_referees", [])
+    ai_data.setdefault("missing_education", [])
+    ai_data.setdefault("spelling_errors_count", 0)
+    ai_data.setdefault("incomplete_text_snippets", [])
 
-    # --- Ensure NLTK data is available ---
-# --- Ensure NLTK data is available (handles all 3.9+ updates) ---
+    matched_skills = ai_data["matched_skills"]
+    missing_skills = ai_data["missing_skills"]
+    matched_keywords = ai_data["matched_keywords"]
+    missing_keywords = ai_data["missing_keywords"]
+    missing_experience = ai_data["missing_experience"]
+    missing_referees = ai_data["missing_referees"]
+    missing_education = ai_data["missing_education"]
+    spelling_errors_count = ai_data["spelling_errors_count"]
+    incomplete_text_snippets = ai_data["incomplete_text_snippets"]
+    # Skills (35%)
+    skills_total = len(matched_skills) + len(missing_skills)
+    skills_raw_score = (len(matched_skills) / skills_total) * 100 if skills_total > 0 else 0
+
+# Experience (40%)
+    experience_total = len(matched_keywords) + len(missing_experience)
+    experience_raw_score = (len(matched_keywords) / experience_total) * 100 if experience_total > 0 else 0
+
+# Keywords (10%)
+    keywords_total = len(matched_keywords) + len(missing_keywords)
+    keywords_raw_score = (len(matched_keywords) / keywords_total) * 100 if keywords_total > 0 else 0
+
+# Education (5%)
+    education_raw_score = 100 if not missing_education else 0
+
+# Completion / ATS Health (10%)
+    completion_raw_score = 100
+    if missing_referees: completion_raw_score -= 40  # -40% if referees don't meet 2-with-contact rule
+    if spelling_errors_count > 3: completion_raw_score -= 20  # penalize
+    if incomplete_text_snippets: completion_raw_score -= 20  # penalize for broken formatting
+
+# Final Weighted Score
+    final_score = (
+        skills_raw_score * 0.90 +
+        experience_raw_score * 0.025 +
+        keywords_raw_score * 0.0250 +
+        education_raw_score * 0.025 +
+        completion_raw_score * 0.025
+    )
+
+    #ai_data["match_percentage"] = safe_score(ai_data["match_percentage"])
+    calculated_score = round(final_score)  # Or int(final_score) for floor    
+
+# Example texts
+    job_description = doc.job_description or ""
+    cv_text = doc.extracted_text or ""
+
+# --- Ensure NLTK data is available ---
+
     try:
         nltk.data.find('tokenizers/punkt')
         nltk.data.find('tokenizers/punkt_tab')
         nltk.data.find('corpora/stopwords')
-    # Try both tagger names (older/newer)
-        try:
-            nltk.data.find('taggers/averaged_perceptron_tagger_eng')
-        except LookupError:
-            nltk.data.find('taggers/averaged_perceptron_tagger')
+        nltk.data.find('corpora/wordnet')
+        nltk.data.find('taggers/averaged_perceptron_tagger_eng')
     except LookupError:
         nltk.download('punkt', quiet=True)
         nltk.download('punkt_tab', quiet=True)
         nltk.download('stopwords', quiet=True)
-    # Download both possible taggers (safe for all versions)
-        nltk.download('averaged_perceptron_tagger', quiet=True)
+        nltk.download('wordnet', quiet=True)
         nltk.download('averaged_perceptron_tagger_eng', quiet=True)
 
 
-    # --- Semantic similarity-based SkillSyncer+ scoring ---
+# --- Helper: Get base form of a word ---
     lemmatizer = WordNetLemmatizer()
 
-    def preprocess_with_phrases(text):
-        """Extract key words and phrases for semantic comparison."""
-        text = (text or "").lower()
+    def get_wordnet_pos(tag):
+        """Map POS tag to WordNet part of speech."""
+        if tag.startswith('J'):
+            return wordnet.ADJ
+        elif tag.startswith('V'):
+            return wordnet.VERB
+        elif tag.startswith('N'):
+            return wordnet.NOUN
+        elif tag.startswith('R'):
+            return wordnet.ADV
+        else:
+            return wordnet.NOUN
+
+
+# --- Helper: Get synonyms of a word ---
+    def get_synonyms(word):
+        """Return a small set of synonyms for a word using WordNet."""
+        synonyms = set()
+        for syn in wordnet.synsets(word):
+            for lemma in syn.lemmas():
+                synonyms.add(lemma.name().replace('_', ' '))
+        return synonyms
+
+
+# --- Main Preprocessor ---
+    def preprocess_with_phrases_nouns_synonyms(text):
+        """
+        Extract meaningful words, phrases, noun phrases, and synonyms.
+        Weighted: word=1, bigram=2, trigram=3, noun phrase=4, synonym=1.
+        """
+        text = text.lower()
         text = re.sub(r'[^a-z0-9+\-\s]', ' ', text)
-        tokens = word_tokenize(text)
+
+        words = word_tokenize(text)
         stop_words = set(stopwords.words('english'))
-        tokens = [t for t in tokens if t not in stop_words and len(t) > 1]
+        words = [w for w in words if w not in stop_words and len(w) > 1]
 
-        tagged = pos_tag(tokens)
-        lemmatized = [lemmatizer.lemmatize(w) for w, _ in tagged]
-
-        # Extract noun phrases (for meaningful phrases)
-        grammar = "NP: {<JJ>*<NN.*>+}"
-        cp = RegexpParser(grammar)
-        tree = cp.parse(tagged)
-        noun_phrases = [
-            ' '.join(w for w, _ in subtree.leaves())
-            for subtree in tree.subtrees(lambda t: t.label() == 'NP')
-            if len(subtree.leaves()) > 1
+    # Lemmatize words with POS tagging
+        tagged_words = pos_tag(words)
+        lemmatized = [
+            lemmatizer.lemmatize(w, get_wordnet_pos(t))
+            for w, t in tagged_words
         ]
 
-        # Add bigrams/trigrams
+    # Noun phrase extraction
+        grammar = "NP: {<JJ>*<NN.*>+}"
+        cp = RegexpParser(grammar)
+        tree = cp.parse(tagged_words)
+
+        noun_phrases = []
+        for subtree in tree.subtrees(filter=lambda t: t.label() == 'NP'):
+            np = ' '.join(word for word, pos in subtree.leaves())
+            if len(np.split()) > 1:
+                noun_phrases.append(np)
+
+    # Create bigrams and trigrams
         bigrams = [' '.join(bg) for bg in ngrams(lemmatized, 2)]
         trigrams = [' '.join(tg) for tg in ngrams(lemmatized, 3)]
 
-        all_terms = set(lemmatized + bigrams + trigrams + noun_phrases)
-        return list(all_terms)
+    # Gather synonyms for all lemmatized words
+        synonym_terms = set()
+        for w in lemmatized:
+            synonym_terms |= get_synonyms(w)
 
-    def semantic_match_score(jd_text, cv_text, threshold=0.72):
-        jd_terms = preprocess_with_phrases(jd_text)
-        cv_terms = preprocess_with_phrases(cv_text)
+    # Combine and weight all terms
+        weighted_terms = {w: 1 for w in lemmatized}
+        weighted_terms.update({bg: 2 for bg in bigrams})
+        weighted_terms.update({tg: 3 for tg in trigrams})
+        weighted_terms.update({np: 4 for np in noun_phrases})
+        weighted_terms.update({syn: 1 for syn in synonym_terms})
 
-        if not jd_terms or not cv_terms:
-            return 0.0, set()
+        return weighted_terms
 
-        jd_emb = _sbert_model.encode(jd_terms, convert_to_tensor=True)
-        cv_emb = _sbert_model.encode(cv_terms, convert_to_tensor=True)
-        cos_scores = util.cos_sim(jd_emb, cv_emb)
 
-        matched_terms = set()
-        for i, jd_term in enumerate(jd_terms):
-            if float(max(cos_scores[i])) >= threshold:
-                matched_terms.add(jd_term)
+# --- Match Calculation ---
+    def calculate_skillmatcher_plus_score(job_description, cv_text):
+        """
+        Calculates weighted, synonym-aware match between JD and CV.
+        Returns (match_percentage, matched_terms).
+        """
+        jd_terms = preprocess_with_phrases_nouns_synonyms(job_description)
+        cv_terms = preprocess_with_phrases_nouns_synonyms(cv_text)
 
-        match_percentage = (len(matched_terms) / len(jd_terms)) * 100
-        return match_percentage, matched_terms
+        if not jd_terms:
+            return 0, set()
+ 
+        common_terms = set(jd_terms.keys()).intersection(set(cv_terms.keys()))
 
-    # --- Compute semantic match ---
-    jd_text = doc.job_description or ""
+        matched_weight = sum(jd_terms[t] for t in common_terms)
+        total_weight = sum(jd_terms.values())
+
+        score = (matched_weight / total_weight) * 100 if total_weight else 0
+        return round(score, 2), common_terms
+
+
+# --- Example integration (Django view) ---
+    job_description = doc.job_description or ""
     cv_text = doc.extracted_text or ""
-    match_percentage, matched_terms = semantic_match_score(jd_text, cv_text)
+
+    match_percentage, matched_phrases = calculate_skillmatcher_plus_score(job_description, cv_text)
     ai_data["match_percentage"] = safe_score(match_percentage)
 
-    print(f"Semantic Match Score: {match_percentage:.2f}%")
-    print(f"Matched Terms: {list(matched_terms)[:30]}")
+    print(f"SkillSyncer+ Match Score: {match_percentage}%")
+    print(f"Matched Terms: {list(matched_phrases)[:25]}")
 
-    # --- Charts ---
+# Override AI score with backend authoritative score
+    ai_data["match_percentage"] = safe_score(match_percentage)
+    # --- Pie charts ---
     skills_chart = safe_pie_chart(
         [len(ai_data["matched_skills"]), len(ai_data["missing_skills"])],
-        ["Matched Skills", "Missing Skills"], ["limegreen", "red"], "Skills Analysis"
+        ["Matched Skills", "Missing Skills"],
+        ["limegreen", "red"],
+        "Skills Analysis"
     )
+
     experience_chart = safe_pie_chart(
         [len(ai_data["matched_keywords"]), len(ai_data["missing_experience"])],
-        ["Relevant Experience", "Missing Experience"], ["limegreen", "orange"], "Work Experience Analysis"
+        ["Relevant Experience", "Missing Experience"],
+        ["limegreen", "orange"],
+        "Work Experience Analysis"
     )
+
     education_chart = safe_pie_chart(
         [1 if not ai_data["missing_education"] else 0, 1 if ai_data["missing_education"] else 0],
-        ["Present", "Missing"], ["limegreen", "red"], "Education Analysis"
+        ["Present", "Missing"],
+        ["limegreen", "red"],
+        "Education Analysis"
     )
+
     overall_chart = safe_pie_chart(
         [ai_data["match_percentage"], 100 - ai_data["match_percentage"]],
-        ["Score Achieved", "Remaining"], ["limegreen", "gray"], "Overall CV Match Score"
+        ["Score Achieved", "Remaining"],
+        ["limegreen", "gray"],
+        "Overall CV Match Score"
     )
 
     return render(request, "home/cv_score.html", {
@@ -419,51 +552,9 @@ CV:
         "scans_left": subscription.scans_remaining,
         "expires_at": subscription.expires_at,
     })
-
     
 @login_required
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
