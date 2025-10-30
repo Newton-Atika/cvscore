@@ -316,16 +316,24 @@ CV:
         ai_data.setdefault(k, [] if "list" in str(type(ai_data.get(k))) else 0)
 
     # --- Ensure NLTK data is available ---
+# --- Ensure NLTK data is available (handles all 3.9+ updates) ---
     try:
         nltk.data.find('tokenizers/punkt')
-        nltk.data.find('tokenizers/punkt_tab')  # <-- this new resource
+        nltk.data.find('tokenizers/punkt_tab')
         nltk.data.find('corpora/stopwords')
-        nltk.data.find('taggers/averaged_perceptron_tagger')
+    # Try both tagger names (older/newer)
+        try:
+            nltk.data.find('taggers/averaged_perceptron_tagger_eng')
+        except LookupError:
+            nltk.data.find('taggers/averaged_perceptron_tagger')
     except LookupError:
         nltk.download('punkt', quiet=True)
         nltk.download('punkt_tab', quiet=True)
         nltk.download('stopwords', quiet=True)
+    # Download both possible taggers (safe for all versions)
         nltk.download('averaged_perceptron_tagger', quiet=True)
+        nltk.download('averaged_perceptron_tagger_eng', quiet=True)
+
 
     # --- Semantic similarity-based SkillSyncer+ scoring ---
     lemmatizer = WordNetLemmatizer()
@@ -420,6 +428,7 @@ CV:
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
