@@ -19,7 +19,7 @@ matplotlib.use('Agg')
 import certifi
 import nltk
 from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
+from nltk.tokenize import word_tokenize, ngrams
 from nltk.util import ngrams
 
 PAYSTACK_SECRET_KEY = settings.PAYSTACK_SECRET_KEY
@@ -385,9 +385,7 @@ CV:
     job_description = doc.job_description or ""
     cv_text = doc.extracted_text or ""
 
-
-
-# --- Ensure NLTK data is available ---
+# Ensure required NLTK data is available
     try:
         nltk.data.find('tokenizers/punkt')
         nltk.data.find('tokenizers/punkt_tab')
@@ -397,19 +395,19 @@ CV:
         nltk.download('punkt_tab', quiet=True)
         nltk.download('stopwords', quiet=True)
 
-
     def preprocess_with_phrases(text):
+        """Preprocess text into words, bigrams, and trigrams for richer comparison."""
         text = text.lower()
         text = re.sub(r'[^a-z0-9+\-\s]', '', text)
 
-    # Tokenize words
+    # Tokenize
         words = word_tokenize(text)
 
     # Remove stopwords
         stop_words = set(stopwords.words('english'))
         words = [w for w in words if w not in stop_words and len(w) > 1]
 
-    # Create bigrams and trigrams (joined as strings)
+    # Create bigrams and trigrams
         bigrams = [' '.join(bg) for bg in ngrams(words, 2)]
         trigrams = [' '.join(tg) for tg in ngrams(words, 3)]
 
@@ -417,20 +415,20 @@ CV:
         all_terms = set(words + bigrams + trigrams)
         return all_terms
 
+# Example usage (replace with your actual doc fields)
+    job_description = getattr(doc, "job_description", "") or ""
+    cv_text = getattr(doc, "extracted_text", "") or ""
 
-# Example (replace with actual document text)
-    job_description = doc.job_description or ""
-    cv_text = doc.extracted_text or ""
-
-# Process JD and CV
     jd_terms = preprocess_with_phrases(job_description)
     cv_terms = preprocess_with_phrases(cv_text)
 
-# Find common terms (words + phrases)
+# Find common terms
     common_terms = jd_terms.intersection(cv_terms)
 
 # Calculate match %
     match_percentage = (len(common_terms) / len(jd_terms) * 100) if jd_terms else 0
+    print(f"Match Percentage: {match_percentage:.2f}%")
+
 
 # Override AI score with backend authoritative score
     ai_data["match_percentage"] = safe_score(match_percentage)
@@ -478,6 +476,7 @@ CV:
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
