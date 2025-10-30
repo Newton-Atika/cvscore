@@ -386,9 +386,11 @@ CV:
 # --- Ensure NLTK data is available (safe for Railway) ---
     try:
         nltk.data.find('tokenizers/punkt')
+        nltk.data.find('tokenizers/punkt_tab')
         nltk.data.find('corpora/stopwords')
     except LookupError:
         nltk.download('punkt', quiet=True)
+        nltk.download('punkt_tab', quiet=True)
         nltk.download('stopwords', quiet=True)
 
 # Example inputs
@@ -463,6 +465,7 @@ CV:
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
