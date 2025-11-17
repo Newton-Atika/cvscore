@@ -268,7 +268,6 @@ from django.conf import settings
 import json, re
 
 from .models import Document, Subscription
-from .utils import safe_score, safe_pie_chart
 from .nlp_engine import compute_hybrid_score
 
 
@@ -468,6 +467,7 @@ CV:
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
