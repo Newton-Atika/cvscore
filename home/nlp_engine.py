@@ -12,7 +12,6 @@ from nltk import pos_tag, word_tokenize, RegexpParser
 from nltk.util import ngrams
 from sentence_transformers import SentenceTransformer, util
 import torch
-
 # -----------------------
 # NLTK downloads (once)
 # -----------------------
