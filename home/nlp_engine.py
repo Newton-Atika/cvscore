@@ -46,16 +46,8 @@ def get_wordnet_pos(tag):
     else: return wordnet.NOUN
 
 
-def get_synonyms(word):
-    synonyms = set()
-    for syn in wordnet.synsets(word):
-        for lemma in syn.lemmas():
-            synonyms.add(lemma.name().replace('_', ' '))
-    return synonyms
-
-
 # -----------------------
-# FULL PREPROCESS PIPELINE
+# FULL PREPROCESS PIPELINE (NO SYNONYMS)
 # -----------------------
 
 def preprocess_with_phrases_nouns_synonyms(text):
@@ -80,23 +72,17 @@ def preprocess_with_phrases_nouns_synonyms(text):
     bigrams = [' '.join(bg) for bg in ngrams(lemmatized, 2)]
     trigrams = [' '.join(tg) for tg in ngrams(lemmatized, 3)]
 
-    # Synonyms
-    synonym_terms = set()
-    for w in lemmatized:
-        synonym_terms |= get_synonyms(w)
-
-    # Weighted term map (same logic as before)
+    # Weighted term map (synonyms REMOVED)
     weighted_terms = {w: 1 for w in lemmatized}
     weighted_terms.update({bg: 2 for bg in bigrams})
     weighted_terms.update({tg: 3 for tg in trigrams})
     weighted_terms.update({np: 4 for np in noun_phrases})
-    weighted_terms.update({syn: 1 for syn in synonym_terms})
 
     return weighted_terms
 
 
 # -----------------------
-# SKILLS + SYNONYMS + PHRASES SCORE
+# SKILLS + PHRASES + NGRAM SCORE (NO SYNONYMS)
 # -----------------------
 
 def calculate_skillmatcher_plus_score(job_description, cv_text):
