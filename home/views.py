@@ -397,44 +397,6 @@ CV:
     ai_data.setdefault("incomplete_text_snippets", [])
 
     # --------------------
-    # Your original scoring logic
-    # --------------------
-    matched_skills = ai_data["matched_skills"]
-    missing_skills = ai_data["missing_skills"]
-    matched_keywords = ai_data["matched_keywords"]
-    missing_keywords = ai_data["missing_keywords"]
-    missing_experience = ai_data["missing_experience"]
-    missing_referees = ai_data["missing_referees"]
-    missing_education = ai_data["missing_education"]
-    spelling_errors_count = ai_data["spelling_errors_count"]
-    incomplete_text_snippets = ai_data["incomplete_text_snippets"]
-
-    # Weighted sections
-    skills_total = len(matched_skills) + len(missing_skills)
-    skills_raw = (len(matched_skills) / skills_total) * 100 if skills_total else 0
-
-    experience_total = len(matched_keywords) + len(missing_experience)
-    experience_raw = (len(matched_keywords) / experience_total) * 100 if experience_total else 0
-
-    keywords_total = len(matched_keywords) + len(missing_keywords)
-    keywords_raw = (len(matched_keywords) / keywords_total) * 100 if keywords_total else 0
-
-    education_raw = 100 if not missing_education else 0
-
-    completion_raw = 100
-    if missing_referees: completion_raw -= 40
-    if spelling_errors_count > 3: completion_raw -= 20
-    if incomplete_text_snippets: completion_raw -= 20
-
-    final_score = (
-        skills_raw * 0.90 +
-        experience_raw * 0.025 +
-        keywords_raw * 0.025 +
-        education_raw * 0.025 +
-        completion_raw * 0.025
-    )
-
-    # --------------------
     # Hybrid NLP Score (Lexical + Semantic)
     # --------------------
     hybrid_score, lexical_score, semantic_score, matched_phrases = compute_hybrid_score(
@@ -491,6 +453,7 @@ CV:
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
