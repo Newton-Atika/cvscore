@@ -195,8 +195,10 @@
     {% else %}
       <div class="subscription-box inactive">
         <p><strong>❌ No Active Subscription</strong></p>
-        <p>Subscribe with <span>KES 150</span> for <span>120 scans</span> valid for 30 days.</p>
-        <a href="{% url 'initiate_payment' %}" class="subscribe-btn">Subscribe Now</a>
+        <p>Choose your plan:</p>
+        <a href="{% url 'initiate_payment' %}?plan=small" class="subscribe-btn">5 scans for KES 15</a>
+        <a href="{% url 'initiate_payment' %}?plan=medium" class="subscribe-btn">10 scans for KES 25</a>
+        <a href="{% url 'initiate_payment' %}?plan=large" class="subscribe-btn">120 scans for KES 150</a>
       </div>
     {% endif %}
 
@@ -217,3 +219,4 @@
   </div>
 </body>
 </html>
+
