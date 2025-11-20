@@ -68,7 +68,7 @@ PAYSTACK_SECRET_KEY = settings.PAYSTACK_SECRET_KEY
 
 @login_required
 def initiate_payment(request):
-    """Initiate Paystack payment for subscription (test key, local SSL fix)"""
+    """Initiate Paystack payment for multiple subscription plans."""
     user = request.user
     subscription, _ = Subscription.objects.get_or_create(user=user)
 
@@ -81,28 +81,39 @@ def initiate_payment(request):
         subscription.start_subscription(free=True)
         return redirect('upload_document')
 
-    # Otherwise → force Paystack payment
+    # Define subscription plans
+    plans = {
+        "small": {"amount_kes": 15, "scans": 5, "label": "5 scans for KES 15"},
+        "medium": {"amount_kes": 25, "scans": 10, "label": "10 scans for KES 25"},
+        "large": {"amount_kes": 150, "scans": 120, "label": "120 scans for KES 150"},
+    }
+
+    # Plan chosen via query parameter; default to 'large'
+    selected_plan = request.GET.get("plan", "large")
+    if selected_plan not in plans:
+        selected_plan = "large"
+    plan = plans[selected_plan]
+
     callback_url = request.build_absolute_uri('/verify_payment/')
-    reference = f"{user.id}-{timezone.now().timestamp()}"
+    reference = f"{user.id}-{timezone.now().timestamp()}-{selected_plan}"
+
     data = {
         "email": user.email,
-        "amount": 15000,  # KES 150
+        "amount": int(plan["amount_kes"] * 100),  # Paystack expects kobo
         "callback_url": callback_url,
         "reference": reference,
     }
     headers = {"Authorization": f"Bearer {PAYSTACK_SECRET_KEY}"}
 
     try:
-        # Use certifi bundle to avoid SSL errors
         response = requests.post(
             "https://api.paystack.co/transaction/initialize",
             headers=headers,
             json=data,
-            verify=certifi.where()  # <--- this avoids SSL verify errors
+            verify=certifi.where()
         )
         resp_data = response.json()
     except requests.exceptions.SSLError as e:
-        # Handle SSL error gracefully
         return render(request, "home/payment_error.html", {
             "message": f"SSL Error: {e}\nGo back to <a href='/upload_document/'>Upload Page</a>"
         })
@@ -112,14 +123,20 @@ def initiate_payment(request):
         })
 
     if resp_data.get("status"):
-        Payment.objects.create(user=user, amount=150, reference=reference, verified=False)
+        Payment.objects.create(
+            user=user,
+            amount=plan["amount_kes"],
+            reference=reference,
+            verified=False,
+            scans_used=0
+        )
         return redirect(resp_data["data"]["authorization_url"])
     else:
         return render(request, "home/payment_error.html", {"message": resp_data.get("message")})
 
 @login_required
 def verify_payment(request):
-    """Verify Paystack payment callback"""
+    """Verify Paystack payment callback and activate subscription."""
     reference = request.GET.get("reference")
     headers = {"Authorization": f"Bearer {PAYSTACK_SECRET_KEY}"}
 
@@ -127,7 +144,7 @@ def verify_payment(request):
         response = requests.get(
             f"https://api.paystack.co/transaction/verify/{reference}",
             headers=headers,
-            verify=certifi.where()  # avoid SSL error
+            verify=certifi.where()
         )
         resp_data = response.json()
     except requests.exceptions.SSLError as e:
@@ -145,9 +162,16 @@ def verify_payment(request):
         payment.expiry_date = timezone.now() + timedelta(days=30)
         payment.save()
 
+        # Determine scans based on amount paid
+        scans_map = {15: 5, 25: 10, 150: 120}
+        scans = scans_map.get(payment.amount, 120)
+
         # Activate subscription
         subscription, _ = Subscription.objects.get_or_create(user=payment.user)
-        subscription.start_subscription(free=False, payment_ref=reference)
+        subscription.scans_remaining = scans
+        subscription.expires_at = timezone.now() + timedelta(days=30)
+        subscription.is_active = True
+        subscription.save()
 
         return redirect('upload_document')
     else:
@@ -467,6 +491,7 @@ CV:
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
