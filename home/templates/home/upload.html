@@ -145,6 +145,24 @@
       color: #f55; 
     }
 
+    /* NEW STYLE FOR SMALL BROWN BUTTONS */
+    .plan-btn {
+      display: inline-block;
+      background-color: #8B4513;
+      color: #fff;
+      padding: 10px 15px;
+      margin: 6px 5px;
+      border-radius: 6px;
+      font-weight: bold;
+      text-decoration: none;
+      transition: 0.3s;
+      width: auto;
+    }
+
+    .plan-btn:hover {
+      background-color: #A0522D;
+    }
+
     @media (max-width: 768px) {
       .form-container { width: 90%; padding: 20px; }
       header h1 { font-size: 1.7em; margin-bottom: 10px; }
@@ -196,9 +214,11 @@
       <div class="subscription-box inactive">
         <p><strong>❌ No Active Subscription</strong></p>
         <p>Choose your plan:</p>
-        <a href="{% url 'initiate_payment' %}?plan=small" class="subscribe-btn">5 scans for KES 15</a>
-        <a href="{% url 'initiate_payment' %}?plan=medium" class="subscribe-btn">10 scans for KES 25</a>
-        <a href="{% url 'initiate_payment' %}?plan=large" class="subscribe-btn">120 scans for KES 150</a>
+
+        <a href="{% url 'initiate_payment' %}?plan=small" class="plan-btn">5 scans for KES 15</a>
+        <a href="{% url 'initiate_payment' %}?plan=medium" class="plan-btn">10 scans for KES 25</a>
+        <a href="{% url 'initiate_payment' %}?plan=large" class="plan-btn">120 scans for KES 150</a>
+
       </div>
     {% endif %}
 
@@ -219,4 +239,3 @@
   </div>
 </body>
 </html>
-
