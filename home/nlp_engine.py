@@ -154,5 +154,5 @@ def compute_semantic_similarity(job_description, cv_text):
 def compute_hybrid_score(job_description, cv_text):
     lexical, match = calculate_skillmatcher_plus_score(job_description, cv_text)
     semantic = compute_semantic_similarity(job_description, cv_text)
-    hybrid = lexical + semantic * 0.4
+    hybrid = lexical + semantic * 0.6
     return hybrid, lexical, semantic, match
