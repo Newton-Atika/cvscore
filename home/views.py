@@ -301,8 +301,8 @@ def score_cv(request, doc_id):
     # Subscription checks
     # --------------------
     subscription, _ = Subscription.objects.get_or_create(user=request.user)
-    if not subscription.free_trial_used:
-        subscription.start_subscription(free=True)
+    #if not subscription.free_trial_used:
+        #subscription.start_subscription(free=True)
     if not subscription.is_valid() or not subscription.deduct_scan():
         return redirect("initiate_payment")
 
@@ -462,6 +462,7 @@ CV:
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
