@@ -77,9 +77,9 @@ def initiate_payment(request):
         return redirect('upload_document')
 
     # First CV free trial
-    if not subscription.free_trial_used:
-        subscription.start_subscription(free=True)
-        return redirect('upload_document')
+    #if not subscription.free_trial_used:
+        #subscription.start_subscription(free=True)
+        #return redirect('upload_document')
 
     # Define subscription plans
     plans = {
@@ -462,6 +462,7 @@ CV:
 def document_list(request):
     documents = Document.objects.all().order_by("-uploaded_at")
     return render(request, "home/list.html", {"documents": documents})
+
 
 
 
